@@ -229,6 +229,56 @@ export type Database = {
           },
         ];
       };
+      sponsor_payment_links: {
+        Row: {
+          amount_cents: number;
+          created_at: string;
+          currency: string;
+          expires_at: string;
+          id: string;
+          paid_at: string | null;
+          pledge_id: string;
+          stripe_checkout_session_id: string | null;
+          stripe_payment_intent_id: string | null;
+          token: string;
+          updated_at: string;
+        };
+        Insert: {
+          amount_cents: number;
+          created_at?: string;
+          currency?: string;
+          expires_at: string;
+          id?: string;
+          paid_at?: string | null;
+          pledge_id: string;
+          stripe_checkout_session_id?: string | null;
+          stripe_payment_intent_id?: string | null;
+          token?: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount_cents?: number;
+          created_at?: string;
+          currency?: string;
+          expires_at?: string;
+          id?: string;
+          paid_at?: string | null;
+          pledge_id?: string;
+          stripe_checkout_session_id?: string | null;
+          stripe_payment_intent_id?: string | null;
+          token?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sponsor_payment_links_pledge_id_fkey";
+            columns: ["pledge_id"];
+            isOneToOne: true;
+            referencedRelation: "pledges";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       stripe_webhook_events: {
         Row: {
           created_at: string;
