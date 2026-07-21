@@ -64,6 +64,11 @@ Required env vars:
 - `STRIPE_SECRET_KEY`
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
 - `STRIPE_WEBHOOK_SECRET`
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM`
 
 ## Supabase Type Generation
 
@@ -72,3 +77,15 @@ Regenerate `database.types.ts` after schema updates:
 ```bash
 supabase gen types typescript --schema public > src/lib/supabase/database.types.ts
 ```
+
+## Full Manual Test Flow
+
+1. Open `/auth/register` and create admin/teacher users.
+2. Ensure each user has a row in `profiles` (`role`, `school_id`).
+3. Login via `/auth/login` and open `/dashboard`.
+4. Create an event at `/dashboard/runs/new`.
+5. Manage students at `/dashboard/runs/[runId]/students` (single or bulk).
+6. Open `/dashboard/students` and test QR / sponsor links.
+7. Enter laps at `/dashboard/runs/[runId]/results`.
+8. Verify sponsor notification emails are sent via SMTP.
+9. Open sponsor payment link `/pay/[token]` and complete Stripe checkout.

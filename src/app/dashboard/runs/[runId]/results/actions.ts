@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { sendSponsorNotificationEmail } from "@/lib/email/smtp";
 import { processRunResultsAndGenerateNotifications } from "@/lib/payments/post-run";
 import { createServerActionSupabaseClient } from "@/lib/supabase/server";
 
@@ -126,6 +127,22 @@ export async function saveLapResultsAction(input: {
 
   try {
     const notifications = await processRunResultsAndGenerateNotifications({ runId: parsed.data.runId });
+
+    for (const payload of notifications) {
+      if (!payload.sponsorEmail) {
+        continue;
+      }
+
+      await sendSponsorNotificationEmail({
+        sponsorName: payload.sponsorName,
+        sponsorEmail: payload.sponsorEmail,
+        studentName: payload.studentName,
+        lapsCompleted: payload.lapsCompleted,
+        totalAmountEuro: payload.totalAmountEuro,
+        paymentLink: payload.paymentLink,
+      });
+    }
+
     return { ok: true, notifications };
   } catch (error) {
     console.error("Post-run processing failed", error);
