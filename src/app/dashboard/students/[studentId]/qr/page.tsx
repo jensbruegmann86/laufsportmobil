@@ -1,7 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { StudentQrCard } from "@/components/dashboard/student-qr-card";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
 type PageParams = {
@@ -18,16 +19,27 @@ export default async function StudentQrPage({ params }: { params: Promise<PagePa
   }
 
   const supabase = await createServerComponentSupabaseClient();
+  const adminSupabase = getSupabaseAdminClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    notFound();
+    redirect("/auth/login");
   }
 
-  const { data: student, error: studentError } = await supabase
+  const { data: profile, error: profileError } = await adminSupabase
+    .from("profiles")
+    .select("role, school_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    redirect("/onboarding");
+  }
+
+  const { data: student, error: studentError } = await adminSupabase
     .from("students")
     .select("id, first_name, last_name, class_name, token, run_id")
     .eq("id", studentId)
@@ -39,12 +51,12 @@ export default async function StudentQrPage({ params }: { params: Promise<PagePa
   }
 
   if (!student) {
-    notFound();
+    redirect("/dashboard/students");
   }
 
-  const { data: run, error: runError } = await supabase
+  const { data: run, error: runError } = await adminSupabase
     .from("runs")
-    .select("id, title, date")
+    .select("id, title, date, created_by, school_id")
     .eq("id", student.run_id)
     .maybeSingle();
 
@@ -54,7 +66,18 @@ export default async function StudentQrPage({ params }: { params: Promise<PagePa
   }
 
   if (!run) {
-    notFound();
+    redirect("/dashboard/students");
+  }
+
+  const canAccessRun =
+    profile.role === "admin"
+      ? run.school_id === profile.school_id
+      : profile.role === "teacher"
+        ? run.created_by === user.id
+        : false;
+
+  if (!canAccessRun) {
+    redirect("/dashboard/students");
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
