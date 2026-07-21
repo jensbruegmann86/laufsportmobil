@@ -92,8 +92,9 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
             event.preventDefault();
             setError(null);
             setMessage(null);
+            const formElement = event.currentTarget;
 
-            const formData = new FormData(event.currentTarget);
+            const formData = new FormData(formElement);
             const className = String(formData.get("className") ?? "");
             const firstName = String(formData.get("firstName") ?? "");
             const lastName = String(formData.get("lastName") ?? "");
@@ -113,7 +114,7 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
                 }
 
                 setMessage(`Schueler gespeichert (${result.data.createdCount}).`);
-                event.currentTarget.reset();
+                formElement.reset();
               } catch {
                 setError("Schueler konnte nicht gespeichert werden.");
               }
