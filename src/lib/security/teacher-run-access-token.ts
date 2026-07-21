@@ -2,19 +2,36 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 
 import { z } from "zod";
 
-const TOKEN_VERSION = 1;
+const TOKEN_VERSION_V1 = 1;
+const TOKEN_VERSION_V2 = 2;
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 
-const TokenPayloadSchema = z.object({
-  v: z.literal(TOKEN_VERSION),
+const TokenPayloadV1Schema = z.object({
+  v: z.literal(TOKEN_VERSION_V1),
   runId: z.uuid(),
   teacherId: z.uuid(),
   exp: z.number().int().positive(),
   nonce: z.string().min(12),
 });
 
-export type TeacherRunAccessTokenPayload = z.infer<typeof TokenPayloadSchema>;
+const TokenPayloadV2Schema = z.object({
+  v: z.literal(TOKEN_VERSION_V2),
+  runId: z.uuid(),
+  exp: z.number().int().positive(),
+  nonce: z.string().min(12),
+});
+
+const TokenPayloadSchema = z.union([TokenPayloadV1Schema, TokenPayloadV2Schema]);
+
+const NormalizedTokenPayloadSchema = z.object({
+  runId: z.uuid(),
+  teacherId: z.uuid().optional(),
+  exp: z.number().int().positive(),
+  nonce: z.string().min(12),
+});
+
+export type TeacherRunAccessTokenPayload = z.infer<typeof NormalizedTokenPayloadSchema>;
 
 function getTokenSecretKey(): Buffer {
   const rawSecret = process.env.TEACHER_RUN_LINK_SECRET;
@@ -28,14 +45,12 @@ function getTokenSecretKey(): Buffer {
 
 export function createTeacherRunAccessToken(input: {
   runId: string;
-  teacherId: string;
   expiresInSeconds?: number;
 }): string {
   const nowSeconds = Math.floor(Date.now() / 1000);
-  const payload: TeacherRunAccessTokenPayload = TokenPayloadSchema.parse({
-    v: TOKEN_VERSION,
+  const payload = TokenPayloadV2Schema.parse({
+    v: TOKEN_VERSION_V2,
     runId: input.runId,
-    teacherId: input.teacherId,
     exp: nowSeconds + (input.expiresInSeconds ?? 60 * 60 * 24),
     nonce: randomBytes(12).toString("hex"),
   });
@@ -89,5 +104,10 @@ export function verifyTeacherRunAccessToken(token: string): TeacherRunAccessToke
     throw new Error("Token expired.");
   }
 
-  return payload;
+  return NormalizedTokenPayloadSchema.parse({
+    runId: payload.runId,
+    teacherId: "teacherId" in payload ? payload.teacherId : undefined,
+    exp: payload.exp,
+    nonce: payload.nonce,
+  });
 }
