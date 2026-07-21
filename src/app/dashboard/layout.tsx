@@ -12,6 +12,7 @@ type DashboardLayoutProps = {
 const navItems = [
   { href: "/dashboard", label: "Uebersicht" },
   { href: "/dashboard/runs", label: "Events / Laeufe" },
+  { href: "/dashboard/sponsoring", label: "Sponsoring" },
   { href: "/dashboard/students", label: "Schueler & QR" },
   { href: "/dashboard/runs/new", label: "Neues Event" },
 ];

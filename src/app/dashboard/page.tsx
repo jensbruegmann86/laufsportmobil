@@ -38,10 +38,15 @@ export default async function DashboardHomePage() {
           <LogoutForm />
         </header>
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Link href="/dashboard/runs" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm hover:bg-zinc-50">
             <h2 className="text-lg font-semibold text-zinc-900">Events / Laeufe</h2>
             <p className="mt-1 text-sm text-zinc-600">Anlegen, verwalten und Ergebnisse erfassen.</p>
+          </Link>
+
+          <Link href="/dashboard/sponsoring" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm hover:bg-zinc-50">
+            <h2 className="text-lg font-semibold text-zinc-900">Sponsoring</h2>
+            <p className="mt-1 text-sm text-zinc-600">Betraege, Zahlungsstatus und Stripe-Webhooks einsehen.</p>
           </Link>
 
           <Link href="/dashboard/students" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm hover:bg-zinc-50">

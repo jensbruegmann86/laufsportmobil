@@ -1,6 +1,7 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
 import { LapInputForm } from "./lap-input-form";
@@ -19,18 +20,29 @@ export default async function RunResultsPage({ params }: { params: Promise<PageP
   }
 
   const supabase = await createServerComponentSupabaseClient();
+  const adminSupabase = getSupabaseAdminClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    notFound();
+    redirect("/auth/login");
   }
 
-  const { data: run, error: runError } = await supabase
+  const { data: profile, error: profileError } = await adminSupabase
+    .from("profiles")
+    .select("role, school_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    redirect("/onboarding");
+  }
+
+  const { data: run, error: runError } = await adminSupabase
     .from("runs")
-    .select("id, title, date, status")
+    .select("id, title, date, status, created_by, school_id")
     .eq("id", runId)
     .maybeSingle();
 
@@ -40,10 +52,18 @@ export default async function RunResultsPage({ params }: { params: Promise<PageP
   }
 
   if (!run) {
-    notFound();
+    redirect("/dashboard/runs");
   }
 
-  const { data: students, error: studentsError } = await supabase
+  const hasAccess =
+    (profile.role === "admin" && run.school_id === profile.school_id) ||
+    (profile.role === "teacher" && run.created_by === user.id);
+
+  if (!hasAccess) {
+    redirect("/dashboard/runs");
+  }
+
+  const { data: students, error: studentsError } = await adminSupabase
     .from("students")
     .select("id, first_name, last_name, class_name, run_results(laps_completed)")
     .eq("run_id", runId)
