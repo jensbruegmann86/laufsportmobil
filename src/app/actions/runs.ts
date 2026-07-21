@@ -221,7 +221,7 @@ export async function createTeacherAccessLinkAction(input: {
   });
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
-  const accessUrl = `${appUrl}/dashboard/runs/${run.id}/students?access=${encodeURIComponent(accessToken)}`;
+  const accessUrl = `${appUrl}/teacher/runs/${run.id}/students?access=${encodeURIComponent(accessToken)}`;
 
   return {
     ok: true,
