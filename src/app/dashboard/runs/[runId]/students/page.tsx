@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { verifyTeacherRunAccessToken } from "@/lib/security/teacher-run-access-token";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
 import { StudentsManagement } from "./students-management";
@@ -30,13 +32,14 @@ export default async function RunStudentsManagementPage({
   }
 
   const supabase = await createServerComponentSupabaseClient();
+  const adminSupabase = getSupabaseAdminClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: run, error: runError } = await supabase
+  const { data: run, error: runError } = await adminSupabase
     .from("runs")
-    .select("id, title")
+    .select("id, title, school_id, created_by")
     .eq("id", runId)
     .maybeSingle();
 
@@ -44,8 +47,40 @@ export default async function RunStudentsManagementPage({
     notFound();
   }
 
-  if (!user && !access) {
-    notFound();
+  if (user) {
+    const { data: profile, error: profileError } = await adminSupabase
+      .from("profiles")
+      .select("role, school_id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError || !profile) {
+      notFound();
+    }
+
+    const hasAccess =
+      (profile.role === "admin" && profile.school_id === run.school_id) ||
+      (profile.role === "teacher" && run.created_by === user.id);
+
+    if (!hasAccess) {
+      notFound();
+    }
+  } else {
+    if (!access) {
+      notFound();
+    }
+
+    let tokenPayload: ReturnType<typeof verifyTeacherRunAccessToken>;
+
+    try {
+      tokenPayload = verifyTeacherRunAccessToken(access);
+    } catch {
+      notFound();
+    }
+
+    if (tokenPayload.runId !== runId || tokenPayload.teacherId !== run.created_by) {
+      notFound();
+    }
   }
 
   return (
