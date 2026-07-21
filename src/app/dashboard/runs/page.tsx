@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
 export default async function RunsPage() {
   const supabase = await createServerComponentSupabaseClient();
+  const adminSupabase = getSupabaseAdminClient();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -13,14 +16,47 @@ export default async function RunsPage() {
     redirect("/auth/login");
   }
 
-  const { data: runs, error } = await supabase
-    .from("runs")
-    .select("id, title, date, status")
-    .order("date", { ascending: false });
+  const { data: profile, error: profileError } = await adminSupabase
+    .from("profiles")
+    .select("role, school_id")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  if (error) {
-    redirect("/dashboard");
+  if (profileError || !profile) {
+    redirect("/onboarding");
   }
+
+  let runs: { id: string; title: string; date: string; status: string }[] = [];
+
+  if (profile.role === "admin") {
+    const { data, error } = await adminSupabase
+      .from("runs")
+      .select("id, title, date, status")
+      .eq("school_id", profile.school_id)
+      .order("date", { ascending: false });
+
+    if (error) {
+      redirect("/dashboard");
+    }
+
+    runs = data ?? [];
+  } else if (profile.role === "teacher") {
+    const { data, error } = await adminSupabase
+      .from("runs")
+      .select("id, title, date, status")
+      .eq("created_by", user.id)
+      .order("date", { ascending: false });
+
+    if (error) {
+      redirect("/dashboard");
+    }
+
+    runs = data ?? [];
+  }
+
+  const activeRuns = runs.filter((run) => run.status === "active").length;
+  const completedRuns = runs.filter((run) => run.status === "completed").length;
+  const draftRuns = runs.filter((run) => run.status === "draft").length;
 
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
@@ -35,8 +71,23 @@ export default async function RunsPage() {
           </Link>
         </header>
 
+        <section className="grid gap-4 sm:grid-cols-3">
+          <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Gesamt</p>
+            <p className="mt-2 text-2xl font-bold text-zinc-900">{runs.length}</p>
+          </article>
+          <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Aktiv</p>
+            <p className="mt-2 text-2xl font-bold text-emerald-700">{activeRuns}</p>
+          </article>
+          <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Abgeschlossen / Entwurf</p>
+            <p className="mt-2 text-2xl font-bold text-zinc-900">{completedRuns} / {draftRuns}</p>
+          </article>
+        </section>
+
         <section className="space-y-3">
-          {(runs ?? []).map((run) => (
+          {runs.map((run) => (
             <article key={run.id} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -70,9 +121,9 @@ export default async function RunsPage() {
             </article>
           ))}
 
-          {(runs ?? []).length === 0 ? (
+          {runs.length === 0 ? (
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
-              Noch keine Events angelegt.
+              Keine Events sichtbar. Falls bereits Events existieren, pruefe deine Rolle und Zuordnung zur Schule im Profil.
             </div>
           ) : null}
         </section>
