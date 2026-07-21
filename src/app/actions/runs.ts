@@ -266,23 +266,25 @@ export async function updateRunSettingsAction(input: {
     };
   }
 
-  if (profile.role !== "admin") {
-    return {
-      ok: false,
-      error: { code: "FORBIDDEN", message: "Nur Admins duerfen Event-Einstellungen aendern." },
-    };
-  }
-
   const { data: run, error: runError } = await adminSupabase
     .from("runs")
-    .select("id, school_id")
+    .select("id, school_id, teacher_id")
     .eq("id", parsed.data.runId)
     .maybeSingle();
 
-  if (runError || !run || run.school_id !== profile.school_id) {
+  if (runError || !run) {
     return {
       ok: false,
       error: { code: "NOT_FOUND", message: "Event nicht gefunden." },
+    };
+  }
+
+  const hasAccess = hasRunAccess({ profile, run, userId: user.id });
+
+  if (!hasAccess) {
+    return {
+      ok: false,
+      error: { code: "FORBIDDEN", message: "Keine Berechtigung fuer dieses Event." },
     };
   }
 
@@ -300,20 +302,22 @@ export async function updateRunSettingsAction(input: {
     };
   }
 
-  try {
-    await createOrRefreshTeacherInvite({
-      runId: parsed.data.runId,
-      schoolId: profile.school_id,
-      invitedBy: user.id,
-      teacherEmail: parsed.data.teacherEmail,
-      eventTitle: parsed.data.title,
-    });
-  } catch (error) {
-    console.error(error);
-    return {
-      ok: false,
-      error: { code: "INTERNAL_ERROR", message: "Event aktualisiert, aber Lehrer-Einladung konnte nicht versendet werden." },
-    };
+  if (profile.role === "admin") {
+    try {
+      await createOrRefreshTeacherInvite({
+        runId: parsed.data.runId,
+        schoolId: profile.school_id,
+        invitedBy: user.id,
+        teacherEmail: parsed.data.teacherEmail,
+        eventTitle: parsed.data.title,
+      });
+    } catch (error) {
+      console.error(error);
+      return {
+        ok: false,
+        error: { code: "INTERNAL_ERROR", message: "Event aktualisiert, aber Lehrer-Einladung konnte nicht versendet werden." },
+      };
+    }
   }
 
   return { ok: true, data: updatedRun };
@@ -373,13 +377,6 @@ export async function createTeacherAccessLinkAction(input: {
     return {
       ok: false,
       error: { code: "NOT_FOUND", message: "Lauf nicht gefunden." },
-    };
-  }
-
-  if (profile.role !== "admin") {
-    return {
-      ok: false,
-      error: { code: "FORBIDDEN", message: "Nur Admins duerfen Lehrerzugangs-Links erstellen." },
     };
   }
 

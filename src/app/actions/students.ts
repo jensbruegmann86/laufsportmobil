@@ -46,11 +46,24 @@ const AddStudentsBulkSchema = z.object({
   accessToken: z.string().min(16).optional(),
 });
 
+const UpdateStudentSchema = z.object({
+  studentId: z.uuid(),
+  className: z.string().trim().min(1).max(100),
+  firstName: z.string().trim().min(1).max(120),
+  lastName: z.string().trim().min(1).max(120),
+});
+
+const DeleteStudentSchema = z.object({
+  studentId: z.uuid(),
+});
+
 type StudentInput = z.infer<typeof StudentInputSchema>;
 
 type AddSingleStudentInput = z.input<typeof AddSingleStudentSchema>;
 
 type AddStudentsBulkInput = z.input<typeof AddStudentsBulkSchema>;
+type UpdateStudentInput = z.input<typeof UpdateStudentSchema>;
+type DeleteStudentInput = z.input<typeof DeleteStudentSchema>;
 
 type StudentInsertPayload = TableInsert<"students">;
 
@@ -67,6 +80,11 @@ type StudentWriteResult = ActionResult<{
     StudentInsertPayload,
     "first_name" | "last_name" | "class_name" | "slug" | "qr_code"
   >[];
+}>;
+
+type StudentMutateResult = ActionResult<{
+  studentId: string;
+  runId: string;
 }>;
 
 type RunAccessContext =
@@ -276,6 +294,92 @@ async function resolveRunAccessContext(runId: string, accessToken?: string): Pro
   };
 }
 
+async function resolveStudentAccess(studentId: string): Promise<ActionResult<{ runId: string }>> {
+  const supabase = await createServerActionSupabaseClient();
+  const adminSupabase = getSupabaseAdminClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return {
+      ok: false,
+      error: {
+        code: "UNAUTHENTICATED",
+        message: "Bitte zuerst anmelden.",
+      },
+    };
+  }
+
+  const { data: profile, error: profileError } = await adminSupabase
+    .from("profiles")
+    .select("role, school_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError || !profile) {
+    return {
+      ok: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Profil konnte nicht geladen werden.",
+      },
+    };
+  }
+
+  const { data: student, error: studentError } = await adminSupabase
+    .from("students")
+    .select("id, run_id")
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (studentError || !student) {
+    return {
+      ok: false,
+      error: {
+        code: "NOT_FOUND",
+        message: "Schueler nicht gefunden.",
+      },
+    };
+  }
+
+  const { data: run, error: runError } = await adminSupabase
+    .from("runs")
+    .select("id, school_id, teacher_id")
+    .eq("id", student.run_id)
+    .maybeSingle();
+
+  if (runError || !run) {
+    return {
+      ok: false,
+      error: {
+        code: "NOT_FOUND",
+        message: "Event zum Schueler nicht gefunden.",
+      },
+    };
+  }
+
+  const allowed =
+    (profile.role === "admin" && run.school_id === profile.school_id) ||
+    (profile.role === "teacher" && run.teacher_id === user.id);
+
+  if (!allowed) {
+    return {
+      ok: false,
+      error: {
+        code: "FORBIDDEN",
+        message: "Keine Berechtigung fuer diesen Schueler.",
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    data: { runId: student.run_id },
+  };
+}
+
 async function insertStudents(runId: string, students: StudentInput[]): Promise<StudentWriteResult> {
   const adminSupabase = getSupabaseAdminClient();
 
@@ -411,4 +515,94 @@ export async function addStudentsToRunAction(input: AddStudentsBulkInput): Promi
   }
 
   return insertStudents(parsed.data.runId, parsed.data.students);
+}
+
+export async function updateStudentAction(input: UpdateStudentInput): Promise<StudentMutateResult> {
+  const parsed = UpdateStudentSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Ungueltige Schuelerdaten.",
+        details: parsed.error.flatten().fieldErrors,
+      },
+    };
+  }
+
+  const access = await resolveStudentAccess(parsed.data.studentId);
+  if (!access.ok) {
+    return access;
+  }
+
+  const adminSupabase = getSupabaseAdminClient();
+
+  const { error } = await adminSupabase
+    .from("students")
+    .update({
+      class_name: parsed.data.className,
+      first_name: parsed.data.firstName,
+      last_name: parsed.data.lastName,
+    })
+    .eq("id", parsed.data.studentId);
+
+  if (error) {
+    return {
+      ok: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Schueler konnte nicht aktualisiert werden.",
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      studentId: parsed.data.studentId,
+      runId: access.data.runId,
+    },
+  };
+}
+
+export async function deleteStudentAction(input: DeleteStudentInput): Promise<StudentMutateResult> {
+  const parsed = DeleteStudentSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Ungueltige Loeschanfrage.",
+        details: parsed.error.flatten().fieldErrors,
+      },
+    };
+  }
+
+  const access = await resolveStudentAccess(parsed.data.studentId);
+  if (!access.ok) {
+    return access;
+  }
+
+  const adminSupabase = getSupabaseAdminClient();
+  const { error } = await adminSupabase.from("students").delete().eq("id", parsed.data.studentId);
+
+  if (error) {
+    return {
+      ok: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Schueler konnte nicht geloescht werden.",
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      studentId: parsed.data.studentId,
+      runId: access.data.runId,
+    },
+  };
 }

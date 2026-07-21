@@ -10,7 +10,9 @@ type Props = {
   runTitle: string;
   initialAccessToken?: string;
   showTeacherLink?: boolean;
-  showBulk?: boolean;
+  showSingleForm?: boolean;
+  showPdfSection?: boolean;
+  showBulkSection?: boolean;
 };
 
 type ParsedStudent = {
@@ -60,6 +62,27 @@ function parseCsvStudents(rawText: string): { students: ParsedStudent[]; errors:
   return { students, errors };
 }
 
+async function decodeCsvFile(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+
+  const decode = (encoding: string) => {
+    try {
+      return new TextDecoder(encoding).decode(bytes);
+    } catch {
+      return "";
+    }
+  };
+
+  let text = decode("utf-8");
+
+  if (text.includes("\uFFFD")) {
+    const windows1252 = decode("windows-1252");
+    text = windows1252 && !windows1252.includes("\uFFFD") ? windows1252 : decode("iso-8859-1");
+  }
+
+  return text.replace(/^\uFEFF/, "");
+}
+
 function downloadCsvTemplate() {
   const csvContent = "Klasse;Vorname;Nachname\n5a;Anna;Mueller\n5a;Ben;Schmidt\n";
   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -87,7 +110,9 @@ export function StudentsManagement({
   runTitle,
   initialAccessToken,
   showTeacherLink = true,
-  showBulk = true,
+  showSingleForm = true,
+  showPdfSection = true,
+  showBulkSection = true,
 }: Props) {
   const [isPendingSingle, startSingle] = useTransition();
   const [isPendingBulk, startBulk] = useTransition();
@@ -169,7 +194,7 @@ export function StudentsManagement({
       </section>
       ) : null}
 
-      {showBulk ? (
+      {showSingleForm ? (
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-zinc-900">Einzelnen Schueler eintragen</h2>
 
@@ -230,6 +255,7 @@ export function StudentsManagement({
       </section>
       ) : null}
 
+      {showPdfSection ? (
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -259,7 +285,9 @@ export function StudentsManagement({
           </div>
         </div>
       </section>
+      ) : null}
 
+      {showBulkSection ? (
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-zinc-900">Bulk-Eingabe</h2>
         <p className="mt-1 text-sm text-zinc-600">Format je Zeile: Klasse;Vorname;Nachname</p>
@@ -322,6 +350,7 @@ export function StudentsManagement({
           </button>
         </form>
       </section>
+      ) : null}
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -360,7 +389,7 @@ export function StudentsManagement({
 
             startCsv(async () => {
               try {
-                const content = await file.text();
+                const content = await decodeCsvFile(file);
                 const parsed = parseCsvStudents(content);
 
                 if (parsed.errors.length > 0) {

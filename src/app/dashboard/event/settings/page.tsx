@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { RunSettingsForm } from "@/components/dashboard/run-settings-form";
 import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
-import { getAccessibleRunsForProfile } from "@/lib/runs/access";
+import { getAccessibleRunsForProfile, hasRunAccess } from "@/lib/runs/access";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
@@ -28,10 +28,6 @@ export default async function EventSettingsPage({ searchParams }: { searchParams
     redirect("/onboarding");
   }
 
-  if (profile.role !== "admin") {
-    redirect(`/dashboard?${new URLSearchParams({ runId: runId ?? "" }).toString()}`);
-  }
-
   const { data: runs, error } = await getAccessibleRunsForProfile({
     supabase: adminSupabase,
     profile,
@@ -46,6 +42,10 @@ export default async function EventSettingsPage({ searchParams }: { searchParams
 
   if (!selectedRun) {
     redirect("/dashboard/runs/new");
+  }
+
+  if (!hasRunAccess({ profile, run: selectedRun, userId: user.id })) {
+    redirect(`/dashboard?${new URLSearchParams({ runId: runId ?? "" }).toString()}`);
   }
 
   const { data: invite } = await adminSupabase
@@ -69,6 +69,7 @@ export default async function EventSettingsPage({ searchParams }: { searchParams
             initialTitle={selectedRun.title}
             initialDate={selectedRun.date}
             initialTeacherEmail={invite?.email ?? ""}
+            canEditTeacherEmail={profile.role === "admin"}
           />
         </section>
       </div>

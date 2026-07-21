@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { StudentRowActions } from "@/components/dashboard/student-row-actions";
 import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
 import { getAccessibleRunsForProfile } from "@/lib/runs/access";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -103,8 +104,7 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Dashboard</p>
           <h1 className="mt-2 text-2xl font-bold text-zinc-900">Schueler und Sponsoring-Links</h1>
           <p className="mt-2 text-sm text-zinc-600">
-            Hier kannst du fuer jeden Schueler den oeffentlichen Sponsoring-Link aufrufen oder den QR-Code
-            herunterladen und teilen.
+            Hier kannst du Teilnehmer bearbeiten, loeschen und den oeffentlichen Sponsoring-Link oeffnen.
           </p>
           {visibleRuns[0] ? (
             <p className="mt-2 text-xs text-zinc-500">
@@ -188,22 +188,12 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
                         <td className="px-2 py-3 text-zinc-900">{student.first_name}</td>
                         <td className="px-2 py-3 text-zinc-700">{student.class_name}</td>
                         <td className="px-2 py-3">
-                          <div className="flex flex-wrap gap-2">
-                            <Link
-                              href={`/dashboard/students/${student.id}/qr${runFilterQuery}`}
-                              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-900 hover:bg-zinc-50"
-                            >
-                              QR
-                            </Link>
-                            <Link
-                              href={publicLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-900 hover:bg-zinc-50"
-                            >
-                              Sponsoring-Link
-                            </Link>
-                          </div>
+                          <StudentRowActions
+                            studentId={student.id}
+                            studentName={`${student.first_name} ${student.last_name}`}
+                            publicLink={publicLink}
+                            runFilterQuery={runFilterQuery}
+                          />
                         </td>
                       </tr>
                     );

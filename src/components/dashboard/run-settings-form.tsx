@@ -9,9 +9,10 @@ type Props = {
   initialTitle: string;
   initialDate: string;
   initialTeacherEmail: string;
+  canEditTeacherEmail?: boolean;
 };
 
-export function RunSettingsForm({ runId, initialTitle, initialDate, initialTeacherEmail }: Props) {
+export function RunSettingsForm({ runId, initialTitle, initialDate, initialTeacherEmail, canEditTeacherEmail = true }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -72,8 +73,12 @@ export function RunSettingsForm({ runId, initialTitle, initialDate, initialTeach
           type="email"
           defaultValue={initialTeacherEmail}
           required
+          readOnly={!canEditTeacherEmail}
           className="mt-1 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
         />
+        {!canEditTeacherEmail ? (
+          <p className="mt-1 text-xs text-zinc-500">Nur Admins koennen die Lehrer-E-Mail aendern.</p>
+        ) : null}
       </div>
 
       {error ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}

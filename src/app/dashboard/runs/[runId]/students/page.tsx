@@ -93,7 +93,9 @@ export default async function RunStudentsManagementPage({
           runTitle={run.title}
           initialAccessToken={access}
           showTeacherLink={false}
-          showBulk={false}
+          showSingleForm={true}
+          showPdfSection={false}
+          showBulkSection={false}
         />
       </div>
     </main>

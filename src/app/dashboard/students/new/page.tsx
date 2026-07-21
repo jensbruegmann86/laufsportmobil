@@ -56,7 +56,9 @@ export default async function NewStudentsPage({ searchParams }: { searchParams: 
           runId={selectedRun.id}
           runTitle={selectedRun.title}
           showTeacherLink={false}
-          showBulk={false}
+          showSingleForm={true}
+          showPdfSection={false}
+          showBulkSection={false}
         />
       </div>
     </main>
