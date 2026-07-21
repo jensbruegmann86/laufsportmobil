@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { createRunAction } from "@/app/actions/runs";
 
 export function CreateRunForm() {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -23,15 +21,18 @@ export function CreateRunForm() {
         const status = String(formData.get("status") ?? "draft") as "draft" | "active" | "completed";
 
         startTransition(async () => {
-          const result = await createRunAction({ title, date, status });
+          try {
+            const result = await createRunAction({ title, date, status });
 
-          if (!result.ok) {
-            setError(result.error.message);
-            return;
+            if (!result.ok) {
+              setError(result.error.message);
+              return;
+            }
+
+            window.location.assign(`/dashboard/runs/${result.data.id}/students`);
+          } catch {
+            setError("Event konnte nicht erstellt werden. Bitte Seite neu laden und erneut versuchen.");
           }
-
-          router.push(`/dashboard/runs/${result.data.id}/students`);
-          router.refresh();
         });
       }}
     >

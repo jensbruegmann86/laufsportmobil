@@ -38,15 +38,19 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
             const expiresInHours = Number(formData.get("expiresInHours") ?? "24");
 
             startLink(async () => {
-              const result = await createTeacherAccessLinkAction({ runId, expiresInHours });
+              try {
+                const result = await createTeacherAccessLinkAction({ runId, expiresInHours });
 
-              if (!result.ok) {
-                setError(result.error.message);
-                return;
+                if (!result.ok) {
+                  setError(result.error.message);
+                  return;
+                }
+
+                setAccessUrl(result.data.accessUrl);
+                setMessage(`Lehrer-Link erstellt (gueltig fuer ${result.data.expiresInHours}h).`);
+              } catch {
+                setError("Lehrer-Link konnte nicht erstellt werden.");
               }
-
-              setAccessUrl(result.data.accessUrl);
-              setMessage(`Lehrer-Link erstellt (gueltig fuer ${result.data.expiresInHours}h).`);
             });
           }}
         >
@@ -96,19 +100,23 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
             const accessToken = String(formData.get("accessToken") ?? initialAccessToken ?? "") || undefined;
 
             startSingle(async () => {
-              const result = await addStudentToRunAction({
-                runId,
-                accessToken,
-                student: { className, firstName, lastName },
-              });
+              try {
+                const result = await addStudentToRunAction({
+                  runId,
+                  accessToken,
+                  student: { className, firstName, lastName },
+                });
 
-              if (!result.ok) {
-                setError(result.error.message);
-                return;
+                if (!result.ok) {
+                  setError(result.error.message);
+                  return;
+                }
+
+                setMessage(`Schueler gespeichert (${result.data.createdCount}).`);
+                event.currentTarget.reset();
+              } catch {
+                setError("Schueler konnte nicht gespeichert werden.");
               }
-
-              setMessage(`Schueler gespeichert (${result.data.createdCount}).`);
-              event.currentTarget.reset();
             });
           }}
         >
@@ -158,14 +166,18 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
               });
 
             startBulk(async () => {
-              const result = await addStudentsToRunAction({ runId, accessToken, students });
+              try {
+                const result = await addStudentsToRunAction({ runId, accessToken, students });
 
-              if (!result.ok) {
-                setError(result.error.message);
-                return;
+                if (!result.ok) {
+                  setError(result.error.message);
+                  return;
+                }
+
+                setMessage(`Bulk gespeichert (${result.data.createdCount} Schueler).`);
+              } catch {
+                setError("Bulk-Import konnte nicht gespeichert werden.");
               }
-
-              setMessage(`Bulk gespeichert (${result.data.createdCount} Schueler).`);
             });
           }}
         >

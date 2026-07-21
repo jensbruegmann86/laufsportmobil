@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { sendSponsorNotificationEmail } from "@/lib/email/smtp";
 import { processRunResultsAndGenerateNotifications } from "@/lib/payments/post-run";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerActionSupabaseClient } from "@/lib/supabase/server";
 
 type SaveLapResultsResult =
@@ -56,6 +57,7 @@ export async function saveLapResultsAction(input: {
   }
 
   const supabase = await createServerActionSupabaseClient();
+  const adminSupabase = getSupabaseAdminClient();
 
   const {
     data: { user },
@@ -69,7 +71,7 @@ export async function saveLapResultsAction(input: {
     };
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await adminSupabase
     .from("profiles")
     .select("role, school_id")
     .eq("id", user.id)
@@ -82,7 +84,7 @@ export async function saveLapResultsAction(input: {
     };
   }
 
-  const { data: run, error: runError } = await supabase
+  const { data: run, error: runError } = await adminSupabase
     .from("runs")
     .select("id, school_id, created_by")
     .eq("id", parsed.data.runId)
@@ -114,7 +116,7 @@ export async function saveLapResultsAction(input: {
     laps_completed: entry.lapsCompleted,
   }));
 
-  const { error: upsertError } = await supabase
+  const { error: upsertError } = await adminSupabase
     .from("run_results")
     .upsert(upsertPayload, { onConflict: "student_id" });
 
