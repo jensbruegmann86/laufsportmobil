@@ -11,13 +11,77 @@ type Props = {
   initialAccessToken?: string;
 };
 
+type ParsedStudent = {
+  className: string;
+  firstName: string;
+  lastName: string;
+};
+
+function parseCsvStudents(rawText: string): { students: ParsedStudent[]; errors: string[] } {
+  const lines = rawText
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) {
+    return { students: [], errors: ["CSV ist leer."] };
+  }
+
+  const headerCandidate = lines[0].toLowerCase();
+  const delimiter = headerCandidate.includes(";") ? ";" : ",";
+
+  const hasHeader =
+    headerCandidate.includes("klasse") ||
+    headerCandidate.includes("class") ||
+    headerCandidate.includes("vorname") ||
+    headerCandidate.includes("first") ||
+    headerCandidate.includes("nachname") ||
+    headerCandidate.includes("last");
+
+  const dataLines = hasHeader ? lines.slice(1) : lines;
+  const students: ParsedStudent[] = [];
+  const errors: string[] = [];
+
+  dataLines.forEach((line, index) => {
+    const parts = line.split(delimiter).map((part) => part.trim());
+    const [className = "", firstName = "", lastName = ""] = parts;
+
+    if (!className || !firstName || !lastName) {
+      errors.push(`Zeile ${hasHeader ? index + 2 : index + 1}: Bitte Klasse, Vorname und Nachname angeben.`);
+      return;
+    }
+
+    students.push({ className, firstName, lastName });
+  });
+
+  return { students, errors };
+}
+
+function downloadCsvTemplate() {
+  const csvContent = "Klasse;Vorname;Nachname\n5a;Anna;Mueller\n5a;Ben;Schmidt\n";
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "schueler-import-vorlage.csv";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export function StudentsManagement({ runId, runTitle, initialAccessToken }: Props) {
   const [isPendingSingle, startSingle] = useTransition();
   const [isPendingBulk, startBulk] = useTransition();
   const [isPendingLink, startLink] = useTransition();
+  const [isPendingCsv, startCsv] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accessUrl, setAccessUrl] = useState<string | null>(null);
+  const [csvErrors, setCsvErrors] = useState<string[]>([]);
+
+  const qrPdfUrl = initialAccessToken
+    ? `/api/runs/${runId}/qr-pdf?access=${encodeURIComponent(initialAccessToken)}`
+    : `/api/runs/${runId}/qr-pdf`;
 
   return (
     <div className="space-y-6">
@@ -143,6 +207,26 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
       </section>
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900">Laufzettel als PDF</h2>
+            <p className="mt-1 text-sm text-zinc-600">
+              Druckansicht mit QR-Codes, 5 Schueler pro A4 zum Ausschneiden.
+            </p>
+          </div>
+
+          <a
+            href={qrPdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+          >
+            QR-PDF oeffnen
+          </a>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-zinc-900">Bulk-Eingabe</h2>
         <p className="mt-1 text-sm text-zinc-600">Format je Zeile: Klasse;Vorname;Nachname</p>
 
@@ -203,6 +287,113 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
             {isPendingBulk ? "Speichert ..." : "Bulk speichern"}
           </button>
         </form>
+      </section>
+
+      <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900">CSV-Import</h2>
+            <p className="mt-1 text-sm text-zinc-600">
+              Importiert Schueler aus CSV (Klasse;Vorname;Nachname oder Klasse,Vorname,Nachname).
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={downloadCsvTemplate}
+            className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
+          >
+            CSV-Vorlage herunterladen
+          </button>
+        </div>
+
+        <form
+          className="mt-4 space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setError(null);
+            setMessage(null);
+            setCsvErrors([]);
+
+            const formData = new FormData(event.currentTarget);
+            const file = formData.get("csvFile");
+            const accessToken = String(formData.get("accessToken") ?? initialAccessToken ?? "") || undefined;
+
+            if (!(file instanceof File)) {
+              setError("Bitte eine CSV-Datei auswaehlen.");
+              return;
+            }
+
+            startCsv(async () => {
+              try {
+                const content = await file.text();
+                const parsed = parseCsvStudents(content);
+
+                if (parsed.errors.length > 0) {
+                  setCsvErrors(parsed.errors);
+                  setError(`CSV enthaelt ${parsed.errors.length} Fehler.`);
+                  return;
+                }
+
+                if (parsed.students.length === 0) {
+                  setError("CSV enthaelt keine gueltigen Schueler.");
+                  return;
+                }
+
+                const result = await addStudentsToRunAction({
+                  runId,
+                  accessToken,
+                  students: parsed.students,
+                });
+
+                if (!result.ok) {
+                  setError(result.error.message);
+                  return;
+                }
+
+                setMessage(`CSV importiert (${result.data.createdCount} Schueler).`);
+              } catch {
+                setError("CSV konnte nicht verarbeitet werden.");
+              }
+            });
+          }}
+        >
+          <input
+            name="csvFile"
+            type="file"
+            accept=".csv,text/csv"
+            required
+            className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none file:mr-3 file:rounded-lg file:border-0 file:bg-zinc-100 file:px-3 file:py-2 file:text-sm file:font-medium"
+          />
+          <input
+            name="accessToken"
+            placeholder="Optional: Lehrer-Link Token"
+            defaultValue={initialAccessToken ?? ""}
+            className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
+          />
+
+          <button
+            type="submit"
+            disabled={isPendingCsv}
+            className="rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-60"
+          >
+            {isPendingCsv ? "Import laeuft ..." : "CSV importieren"}
+          </button>
+        </form>
+
+        {csvErrors.length > 0 ? (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-sm font-semibold text-amber-900">CSV-Fehler</p>
+            <ul className="mt-2 space-y-1 text-sm text-amber-800">
+              {csvErrors.slice(0, 8).map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+            {csvErrors.length > 8 ? (
+              <p className="mt-2 text-xs text-amber-700">Weitere Fehler: {csvErrors.length - 8}</p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       {error ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
