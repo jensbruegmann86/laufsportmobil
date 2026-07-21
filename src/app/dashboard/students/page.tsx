@@ -1,0 +1,135 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
+
+type StudentRow = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  class_name: string;
+  token: string;
+  run_id: string;
+};
+
+type RunRow = {
+  id: string;
+  title: string;
+  date: string;
+  status: "draft" | "active" | "completed";
+};
+
+export default async function DashboardStudentsPage() {
+  const supabase = await createServerComponentSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    notFound();
+  }
+
+  const { data: students, error: studentsError } = await supabase
+    .from("students")
+    .select("id, first_name, last_name, class_name, token, run_id")
+    .order("class_name", { ascending: true })
+    .order("last_name", { ascending: true });
+
+  if (studentsError) {
+    console.error("Failed to load students for dashboard", studentsError);
+    notFound();
+  }
+
+  const typedStudents = (students ?? []) as StudentRow[];
+  const runIds = [...new Set(typedStudents.map((student) => student.run_id))];
+
+  let runsById = new Map<string, RunRow>();
+
+  if (runIds.length > 0) {
+    const { data: runs, error: runsError } = await supabase
+      .from("runs")
+      .select("id, title, date, status")
+      .in("id", runIds);
+
+    if (runsError) {
+      console.error("Failed to load runs for dashboard", runsError);
+      notFound();
+    }
+
+    runsById = new Map((runs ?? []).map((run) => [run.id, run as RunRow]));
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
+
+  return (
+    <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-5xl space-y-6">
+        <header className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Dashboard</p>
+          <h1 className="mt-2 text-2xl font-bold text-zinc-900">Schueler und Sponsoring-Links</h1>
+          <p className="mt-2 text-sm text-zinc-600">
+            Hier kannst du fuer jeden Schueler den oeffentlichen Sponsoring-Link aufrufen oder den QR-Code
+            herunterladen und teilen.
+          </p>
+        </header>
+
+        {typedStudents.length === 0 ? (
+          <section className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
+            Noch keine Schueler vorhanden.
+          </section>
+        ) : (
+          <section className="space-y-4">
+            {typedStudents.map((student) => {
+              const run = runsById.get(student.run_id);
+              const studentName = `${student.first_name} ${student.last_name}`;
+              const publicLink = `${appUrl}/s/${student.token}`;
+
+              return (
+                <article
+                  key={student.id}
+                  className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+                >
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-zinc-900">{studentName}</h2>
+                      <p className="text-sm text-zinc-600">Klasse {student.class_name}</p>
+                      {run ? (
+                        <p className="mt-1 text-sm text-zinc-600">
+                          {run.title} ({new Intl.DateTimeFormat("de-DE").format(new Date(run.date))})
+                        </p>
+                      ) : null}
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2 sm:w-auto sm:grid-cols-3">
+                      <Link
+                        href={publicLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-xl border border-zinc-300 px-4 py-2 text-center text-sm font-medium text-zinc-900 transition hover:bg-zinc-50"
+                      >
+                        Sponsoring-Link
+                      </Link>
+                      <Link
+                        href={`/dashboard/students/${student.id}/qr`}
+                        className="rounded-xl bg-zinc-900 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-zinc-700"
+                      >
+                        QR anzeigen
+                      </Link>
+                      <Link
+                        href={publicLink}
+                        className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-center text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+                      >
+                        Teilen
+                      </Link>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        )}
+      </div>
+    </main>
+  );
+}
