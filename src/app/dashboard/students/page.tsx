@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
 type StudentRow = {
@@ -21,44 +22,76 @@ type RunRow = {
 
 export default async function DashboardStudentsPage() {
   const supabase = await createServerComponentSupabaseClient();
+  const adminSupabase = getSupabaseAdminClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    notFound();
+    redirect("/auth/login");
   }
 
-  const { data: students, error: studentsError } = await supabase
-    .from("students")
-    .select("id, first_name, last_name, class_name, token, run_id")
-    .order("class_name", { ascending: true })
-    .order("last_name", { ascending: true });
+  const { data: profile, error: profileError } = await adminSupabase
+    .from("profiles")
+    .select("role, school_id")
+    .eq("id", user.id)
+    .maybeSingle();
 
-  if (studentsError) {
-    console.error("Failed to load students for dashboard", studentsError);
-    notFound();
+  if (profileError || !profile) {
+    redirect("/onboarding");
   }
 
-  const typedStudents = (students ?? []) as StudentRow[];
-  const runIds = [...new Set(typedStudents.map((student) => student.run_id))];
+  let allowedRuns: RunRow[] = [];
 
-  let runsById = new Map<string, RunRow>();
-
-  if (runIds.length > 0) {
-    const { data: runs, error: runsError } = await supabase
+  if (profile.role === "admin") {
+    const { data: runs, error: runsError } = await adminSupabase
       .from("runs")
       .select("id, title, date, status")
-      .in("id", runIds);
+      .eq("school_id", profile.school_id)
+      .order("date", { ascending: false });
 
     if (runsError) {
-      console.error("Failed to load runs for dashboard", runsError);
-      notFound();
+      console.error("Failed to load school runs for dashboard students", runsError);
+      redirect("/dashboard");
     }
 
-    runsById = new Map((runs ?? []).map((run) => [run.id, run as RunRow]));
+    allowedRuns = (runs ?? []) as RunRow[];
+  } else if (profile.role === "teacher") {
+    const { data: runs, error: runsError } = await adminSupabase
+      .from("runs")
+      .select("id, title, date, status")
+      .eq("created_by", user.id)
+      .order("date", { ascending: false });
+
+    if (runsError) {
+      console.error("Failed to load teacher runs for dashboard students", runsError);
+      redirect("/dashboard");
+    }
+
+    allowedRuns = (runs ?? []) as RunRow[];
   }
+
+  const runIds = [...new Set(allowedRuns.map((run) => run.id))];
+  let typedStudents: StudentRow[] = [];
+
+  if (runIds.length > 0) {
+    const { data: students, error: studentsError } = await adminSupabase
+      .from("students")
+      .select("id, first_name, last_name, class_name, token, run_id")
+      .in("run_id", runIds)
+      .order("class_name", { ascending: true })
+      .order("last_name", { ascending: true });
+
+    if (studentsError) {
+      console.error("Failed to load students for dashboard", studentsError);
+      redirect("/dashboard");
+    }
+
+    typedStudents = (students ?? []) as StudentRow[];
+  }
+
+  const runsById = new Map(allowedRuns.map((run) => [run.id, run]));
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
 
