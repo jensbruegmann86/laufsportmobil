@@ -6,6 +6,7 @@ type CheckoutBody = {
   studentId: string;
   amountCents: number;
   sponsorName: string;
+  pledgeId?: string;
 };
 
 export async function POST(request: Request) {
@@ -26,7 +27,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const origin = request.headers.get("origin") ?? "http://localhost:3000";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
+    const origin = appUrl || request.headers.get("origin") || "http://localhost:3000";
     const stripe = getStripeServerClient();
 
     const session = await stripe.checkout.sessions.create({
@@ -50,6 +52,7 @@ export async function POST(request: Request) {
       metadata: {
         student_id: body.studentId,
         sponsor_name: body.sponsorName,
+        pledge_id: body.pledgeId ?? "",
       },
     });
 
