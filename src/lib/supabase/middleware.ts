@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import type { Database } from "@/lib/supabase/database.types";
+
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
     request,
@@ -13,7 +15,7 @@ export async function updateSession(request: NextRequest) {
     throw new Error("Missing Supabase public environment variables.");
   }
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+  const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();

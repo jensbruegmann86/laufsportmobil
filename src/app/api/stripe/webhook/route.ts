@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     event_id: event.id,
     event_type: event.type,
     livemode: event.livemode,
-    payload: event,
+    payload: JSON.parse(JSON.stringify(event)),
     processing_status: "received",
   });
 

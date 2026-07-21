@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-let supabaseAdminClient: SupabaseClient | null = null;
+import type { Database } from "@/lib/supabase/database.types";
+
+let supabaseAdminClient: SupabaseClient<Database> | null = null;
 
 export function getSupabaseAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -11,7 +13,7 @@ export function getSupabaseAdminClient() {
   }
 
   if (!supabaseAdminClient) {
-    supabaseAdminClient = createClient(supabaseUrl, serviceRoleKey, {
+    supabaseAdminClient = createClient<Database>(supabaseUrl, serviceRoleKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false,
