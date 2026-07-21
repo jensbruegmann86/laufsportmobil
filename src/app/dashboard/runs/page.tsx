@@ -4,7 +4,12 @@ import { redirect } from "next/navigation";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
-export default async function RunsPage() {
+type SearchParams = {
+  runId?: string;
+};
+
+export default async function RunsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const { runId } = await searchParams;
   const supabase = await createServerComponentSupabaseClient();
   const adminSupabase = getSupabaseAdminClient();
 
@@ -54,9 +59,13 @@ export default async function RunsPage() {
     runs = data ?? [];
   }
 
-  const activeRuns = runs.filter((run) => run.status === "active").length;
-  const completedRuns = runs.filter((run) => run.status === "completed").length;
-  const draftRuns = runs.filter((run) => run.status === "draft").length;
+  const selectedRunId = runs.some((run) => run.id === runId) ? runId : (runs[0]?.id ?? null);
+  const visibleRuns = selectedRunId ? runs.filter((run) => run.id === selectedRunId) : runs;
+  const runFilterQuery = selectedRunId ? `?runId=${selectedRunId}` : "";
+
+  const activeRuns = visibleRuns.filter((run) => run.status === "active").length;
+  const completedRuns = visibleRuns.filter((run) => run.status === "completed").length;
+  const draftRuns = visibleRuns.filter((run) => run.status === "draft").length;
 
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
@@ -66,7 +75,7 @@ export default async function RunsPage() {
             <h1 className="text-2xl font-bold text-zinc-900">Events / Laeufe</h1>
             <p className="text-sm text-zinc-600">Verwalte Event, Schueler, Ergebnisse und Zahlungsprozess.</p>
           </div>
-          <Link href="/dashboard/runs/new" className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700">
+          <Link href={`/dashboard/runs/new${runFilterQuery}`} className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700">
             Neues Event
           </Link>
         </header>
@@ -74,7 +83,7 @@ export default async function RunsPage() {
         <section className="grid gap-4 sm:grid-cols-3">
           <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Gesamt</p>
-            <p className="mt-2 text-2xl font-bold text-zinc-900">{runs.length}</p>
+            <p className="mt-2 text-2xl font-bold text-zinc-900">{visibleRuns.length}</p>
           </article>
           <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Aktiv</p>
@@ -87,7 +96,7 @@ export default async function RunsPage() {
         </section>
 
         <section className="space-y-3">
-          {runs.map((run) => (
+          {visibleRuns.map((run) => (
             <article key={run.id} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -111,7 +120,7 @@ export default async function RunsPage() {
                     Runden
                   </Link>
                   <Link
-                    href="/dashboard/students"
+                    href={`/dashboard/students?runId=${run.id}`}
                     className="rounded-xl border border-zinc-300 px-3 py-2 text-center text-sm font-medium text-zinc-900 hover:bg-zinc-50"
                   >
                     QR/Links
@@ -121,9 +130,9 @@ export default async function RunsPage() {
             </article>
           ))}
 
-          {runs.length === 0 ? (
+          {visibleRuns.length === 0 ? (
             <div className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
-              Keine Events sichtbar. Falls bereits Events existieren, pruefe deine Rolle und Zuordnung zur Schule im Profil.
+              Kein Event fuer den aktuell ausgewaehlten Filter sichtbar.
             </div>
           ) : null}
         </section>

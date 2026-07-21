@@ -5,7 +5,12 @@ import { LogoutForm } from "@/components/dashboard/logout-form";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
-export default async function DashboardHomePage() {
+type SearchParams = {
+  runId?: string;
+};
+
+export default async function DashboardHomePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const { runId } = await searchParams;
   const supabase = await createServerComponentSupabaseClient();
   const {
     data: { user },
@@ -26,6 +31,8 @@ export default async function DashboardHomePage() {
     redirect("/onboarding");
   }
 
+  const runFilterQuery = runId ? `?runId=${runId}` : "";
+
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-5xl space-y-6">
@@ -39,22 +46,22 @@ export default async function DashboardHomePage() {
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Link href="/dashboard/runs" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm hover:bg-zinc-50">
+          <Link href={`/dashboard/runs${runFilterQuery}`} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm hover:bg-zinc-50">
             <h2 className="text-lg font-semibold text-zinc-900">Events / Laeufe</h2>
             <p className="mt-1 text-sm text-zinc-600">Anlegen, verwalten und Ergebnisse erfassen.</p>
           </Link>
 
-          <Link href="/dashboard/sponsoring" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm hover:bg-zinc-50">
+          <Link href={`/dashboard/sponsoring${runFilterQuery}`} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm hover:bg-zinc-50">
             <h2 className="text-lg font-semibold text-zinc-900">Sponsoring</h2>
             <p className="mt-1 text-sm text-zinc-600">Betraege, Zahlungsstatus und Stripe-Webhooks einsehen.</p>
           </Link>
 
-          <Link href="/dashboard/students" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm hover:bg-zinc-50">
+          <Link href={`/dashboard/students${runFilterQuery}`} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm hover:bg-zinc-50">
             <h2 className="text-lg font-semibold text-zinc-900">Schueler & QR</h2>
             <p className="mt-1 text-sm text-zinc-600">Sponsoring-Links und QR-Codes je Schueler.</p>
           </Link>
 
-          <Link href="/dashboard/runs/new" className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm hover:bg-zinc-50">
+          <Link href={`/dashboard/runs/new${runFilterQuery}`} className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm hover:bg-zinc-50">
             <h2 className="text-lg font-semibold text-zinc-900">Neues Event</h2>
             <p className="mt-1 text-sm text-zinc-600">Schnell einen neuen Sponsorenlauf erstellen.</p>
           </Link>

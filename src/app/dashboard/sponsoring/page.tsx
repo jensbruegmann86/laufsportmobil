@@ -66,11 +66,16 @@ type CashOpenRow = {
   status: "pending" | "notified" | "paid";
 };
 
+type SearchParams = {
+  runId?: string;
+};
+
 function formatEuroFromCents(cents: number): string {
   return `${toEuro(cents).toFixed(2)} EUR`;
 }
 
-export default async function DashboardSponsoringPage() {
+export default async function DashboardSponsoringPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const { runId } = await searchParams;
   const supabase = await createServerComponentSupabaseClient();
   const adminSupabase = getSupabaseAdminClient();
 
@@ -122,7 +127,10 @@ export default async function DashboardSponsoringPage() {
     allowedRuns = (runs ?? []) as RunRow[];
   }
 
-  const runIds = [...new Set(allowedRuns.map((run) => run.id))];
+  const selectedRunId = allowedRuns.some((run) => run.id === runId) ? runId : (allowedRuns[0]?.id ?? null);
+  const visibleRuns = selectedRunId ? allowedRuns.filter((run) => run.id === selectedRunId) : allowedRuns;
+
+  const runIds = [...new Set(visibleRuns.map((run) => run.id))];
 
   let students: StudentRow[] = [];
   if (runIds.length > 0) {
@@ -180,7 +188,7 @@ export default async function DashboardSponsoringPage() {
     .limit(20);
 
   const studentById = new Map(students.map((student) => [student.id, student]));
-  const runById = new Map(allowedRuns.map((run) => [run.id, run]));
+  const runById = new Map(visibleRuns.map((run) => [run.id, run]));
   const paymentLinkByPledgeId = new Map(paymentLinks.map((link) => [link.pledge_id, link]));
 
   const totalSponsors = pledges.length;
@@ -222,7 +230,7 @@ export default async function DashboardSponsoringPage() {
 
   const runAggregates = new Map<string, RunAggregate>();
 
-  for (const run of allowedRuns) {
+  for (const run of visibleRuns) {
     runAggregates.set(run.id, {
       run,
       pledgeCount: 0,
@@ -285,6 +293,7 @@ export default async function DashboardSponsoringPage() {
   const aggregateRows = [...runAggregates.values()].sort(
     (a, b) => new Date(b.run.date).getTime() - new Date(a.run.date).getTime(),
   );
+  const runFilterQuery = selectedRunId ? `?runId=${selectedRunId}` : "";
 
   const webhookRows = (webhookEvents ?? []) as WebhookEventRow[];
   const failedWebhooks = webhookRows.filter((event) => event.processing_status !== "processed").length;
@@ -298,6 +307,11 @@ export default async function DashboardSponsoringPage() {
           <p className="mt-2 text-sm text-zinc-600">
             Hier siehst du erwartete und bezahlte Betraege, offene Zahlungen und den Status der letzten Stripe-Webhooks.
           </p>
+          {visibleRuns[0] ? (
+            <p className="mt-2 text-xs text-zinc-500">
+              Aktiver Event-Filter: {visibleRuns[0].title} ({new Intl.DateTimeFormat("de-DE").format(new Date(visibleRuns[0].date))})
+            </p>
+          ) : null}
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -400,7 +414,7 @@ export default async function DashboardSponsoringPage() {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-zinc-900">Pro Event</h2>
             <Link
-              href="/dashboard/runs"
+              href={`/dashboard/runs${runFilterQuery}`}
               className="rounded-xl border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50"
             >
               Zu Events / Rundeneingabe

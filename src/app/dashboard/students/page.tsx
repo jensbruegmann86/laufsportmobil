@@ -20,7 +20,12 @@ type RunRow = {
   status: "draft" | "active" | "completed";
 };
 
-export default async function DashboardStudentsPage() {
+type SearchParams = {
+  runId?: string;
+};
+
+export default async function DashboardStudentsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  const { runId } = await searchParams;
   const supabase = await createServerComponentSupabaseClient();
   const adminSupabase = getSupabaseAdminClient();
 
@@ -72,7 +77,9 @@ export default async function DashboardStudentsPage() {
     allowedRuns = (runs ?? []) as RunRow[];
   }
 
-  const runIds = [...new Set(allowedRuns.map((run) => run.id))];
+  const selectedRunId = allowedRuns.some((run) => run.id === runId) ? runId : (allowedRuns[0]?.id ?? null);
+  const visibleRuns = selectedRunId ? allowedRuns.filter((run) => run.id === selectedRunId) : allowedRuns;
+  const runIds = [...new Set(visibleRuns.map((run) => run.id))];
   let typedStudents: StudentRow[] = [];
 
   if (runIds.length > 0) {
@@ -91,7 +98,8 @@ export default async function DashboardStudentsPage() {
     typedStudents = (students ?? []) as StudentRow[];
   }
 
-  const runsById = new Map(allowedRuns.map((run) => [run.id, run]));
+  const runsById = new Map(visibleRuns.map((run) => [run.id, run]));
+  const runFilterQuery = selectedRunId ? `?runId=${selectedRunId}` : "";
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
 
@@ -105,6 +113,11 @@ export default async function DashboardStudentsPage() {
             Hier kannst du fuer jeden Schueler den oeffentlichen Sponsoring-Link aufrufen oder den QR-Code
             herunterladen und teilen.
           </p>
+          {visibleRuns[0] ? (
+            <p className="mt-2 text-xs text-zinc-500">
+              Aktiver Event-Filter: {visibleRuns[0].title} ({new Intl.DateTimeFormat("de-DE").format(new Date(visibleRuns[0].date))})
+            </p>
+          ) : null}
         </header>
 
         {typedStudents.length === 0 ? (
@@ -144,7 +157,7 @@ export default async function DashboardStudentsPage() {
                         Sponsoring-Link
                       </Link>
                       <Link
-                        href={`/dashboard/students/${student.id}/qr`}
+                        href={`/dashboard/students/${student.id}/qr${runFilterQuery}`}
                         className="rounded-xl bg-zinc-900 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-zinc-700"
                       >
                         QR anzeigen
