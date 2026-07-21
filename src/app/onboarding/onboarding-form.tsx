@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { bootstrapAdminAction } from "@/app/auth/actions";
 
 export function OnboardingForm() {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -21,15 +19,18 @@ export function OnboardingForm() {
         const schoolName = String(formData.get("schoolName") ?? "");
 
         startTransition(async () => {
-          const result = await bootstrapAdminAction({ schoolName });
+          try {
+            const result = await bootstrapAdminAction({ schoolName });
 
-          if (!result.ok) {
-            setError(result.message);
-            return;
+            if (!result.ok) {
+              setError(result.message);
+              return;
+            }
+
+            window.location.assign("/dashboard");
+          } catch {
+            setError("Onboarding konnte nicht abgeschlossen werden. Bitte Seite neu laden und erneut versuchen.");
           }
-
-          router.push("/dashboard");
-          router.refresh();
         });
       }}
     >
