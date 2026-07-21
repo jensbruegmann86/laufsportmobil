@@ -12,8 +12,19 @@ type PageParams = {
 
 const TokenSchema = z.uuid();
 
-export default async function SponsorPaymentPage({ params }: { params: Promise<PageParams> }) {
+type SearchParams = {
+  payment?: string;
+};
+
+export default async function SponsorPaymentPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<PageParams>;
+  searchParams?: Promise<SearchParams>;
+}) {
   const { token } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
 
   if (!TokenSchema.safeParse(token).success) {
     notFound();
@@ -59,7 +70,9 @@ export default async function SponsorPaymentPage({ params }: { params: Promise<P
   }
 
   const isPaid = pledge.status === "paid" || paymentLink.paid_at != null;
+  const isCashSelected = pledge.payment_method_choice === "cash" && !isPaid;
   const finalAmountEuro = toEuro(paymentLink.amount_cents).toFixed(2);
+  const paymentState = resolvedSearchParams?.payment;
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-amber-50 px-4 py-8 sm:px-6 lg:px-8">
@@ -78,6 +91,26 @@ export default async function SponsorPaymentPage({ params }: { params: Promise<P
           <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-800 shadow-sm">
             Diese Spende wurde bereits erfolgreich bezahlt. Vielen Dank!
           </section>
+        ) : isCashSelected ? (
+          <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 shadow-sm">
+            <p className="font-semibold">Barzahlung vorgemerkt</p>
+            <p className="mt-1">
+              Danke! Die Schule hat vermerkt, dass du den Betrag bar zahlst. Die Lehrkraft markiert die Zahlung nach
+              Erhalt als abgeschlossen.
+            </p>
+
+            <div className="mt-4">
+              <form action="/api/checkout" method="post">
+                <input type="hidden" name="token" value={token} />
+                <button
+                  type="submit"
+                  className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-50"
+                >
+                  Stattdessen online via Stripe zahlen
+                </button>
+              </form>
+            </div>
+          </section>
         ) : (
           <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-zinc-900">Zahlungsart waehlen</h2>
@@ -85,6 +118,18 @@ export default async function SponsorPaymentPage({ params }: { params: Promise<P
               Du kannst entweder bar in der Schule zahlen oder direkt online per Stripe. Falls der Link
               abgelaufen ist, wird der Abschluss im naechsten Schritt blockiert.
             </p>
+
+            {paymentState === "cancelled" ? (
+              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                Stripe-Zahlung wurde abgebrochen. Du kannst es erneut versuchen oder Barzahlung waehlen.
+              </p>
+            ) : null}
+
+            {paymentState === "success" ? (
+              <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+                Zahlung erfolgreich gestartet. Die finale Bestaetigung erfolgt automatisch per Stripe-Webhook.
+              </p>
+            ) : null}
 
             <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <form action={async () => {

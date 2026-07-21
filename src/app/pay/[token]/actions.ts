@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -51,6 +52,9 @@ export async function setCashPaymentChoiceAction(input: { token: string }): Prom
   if (pledgeError) {
     return { ok: false, error: "Zahlungsart konnte nicht gespeichert werden." };
   }
+
+  revalidatePath(`/pay/${parsed.data.token}`);
+  revalidatePath("/dashboard/sponsoring");
 
   return {
     ok: true,

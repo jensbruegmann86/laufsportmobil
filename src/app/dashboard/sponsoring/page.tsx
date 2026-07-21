@@ -5,6 +5,8 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { toEuro } from "@/lib/payments/calculations";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
+import { confirmCashPaymentReceivedAction } from "./actions";
+
 type RunRow = {
   id: string;
   title: string;
@@ -52,6 +54,16 @@ type RunAggregate = {
   pendingCount: number;
   expectedCents: number;
   paidCents: number;
+};
+
+type CashOpenRow = {
+  pledgeId: string;
+  sponsorName: string;
+  studentName: string;
+  runTitle: string;
+  amountCents: number;
+  expiresAt: string;
+  status: "pending" | "notified" | "paid";
 };
 
 function formatEuroFromCents(cents: number): string {
@@ -168,6 +180,7 @@ export default async function DashboardSponsoringPage() {
     .limit(20);
 
   const studentById = new Map(students.map((student) => [student.id, student]));
+  const runById = new Map(allowedRuns.map((run) => [run.id, run]));
   const paymentLinkByPledgeId = new Map(paymentLinks.map((link) => [link.pledge_id, link]));
 
   const totalSponsors = pledges.length;
@@ -187,6 +200,25 @@ export default async function DashboardSponsoringPage() {
   }, 0);
 
   const openTotalCents = Math.max(expectedTotalCents - paidTotalCents, 0);
+
+  const cashOpenRows: CashOpenRow[] = pledges
+    .filter((pledge) => pledge.payment_method_choice === "cash" && pledge.status !== "paid")
+    .map((pledge) => {
+      const student = studentById.get(pledge.student_id);
+      const run = student ? runById.get(student.run_id) : null;
+      const link = paymentLinkByPledgeId.get(pledge.id);
+
+      return {
+        pledgeId: pledge.id,
+        sponsorName: pledge.sponsor_name,
+        studentName: student ? `${student.first_name} ${student.last_name}` : "Unbekannter Schueler",
+        runTitle: run?.title ?? "Unbekannter Lauf",
+        amountCents: link?.amount_cents ?? 0,
+        expiresAt: link?.expires_at ?? "",
+        status: pledge.status,
+      };
+    })
+    .sort((a, b) => b.amountCents - a.amountCents);
 
   const runAggregates = new Map<string, RunAggregate>();
 
@@ -307,6 +339,61 @@ export default async function DashboardSponsoringPage() {
             <p className="text-zinc-600">Paid</p>
             <p className="text-xl font-bold text-zinc-900">{paidCount}</p>
           </article>
+        </section>
+
+        <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-zinc-900">Offene Barzahlungen</h2>
+            <p className="text-xs text-zinc-500">Nur als cash gewaehlte Pledges</p>
+          </div>
+
+          {cashOpenRows.length === 0 ? (
+            <p className="text-sm text-zinc-600">Aktuell keine offenen Barzahlungen.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-[0.1em] text-zinc-500">
+                    <th className="px-2 py-3">Sponsor</th>
+                    <th className="px-2 py-3">Schueler</th>
+                    <th className="px-2 py-3">Lauf</th>
+                    <th className="px-2 py-3">Betrag</th>
+                    <th className="px-2 py-3">Status</th>
+                    <th className="px-2 py-3">Aktion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cashOpenRows.map((row) => (
+                    <tr key={row.pledgeId} className="border-b border-zinc-100">
+                      <td className="px-2 py-3 text-zinc-900">{row.sponsorName}</td>
+                      <td className="px-2 py-3 text-zinc-800">{row.studentName}</td>
+                      <td className="px-2 py-3 text-zinc-800">{row.runTitle}</td>
+                      <td className="px-2 py-3 font-medium text-zinc-900">{formatEuroFromCents(row.amountCents)}</td>
+                      <td className="px-2 py-3 text-xs text-zinc-600">
+                        {row.status}
+                        {row.expiresAt ? (
+                          <span className="block text-[11px] text-zinc-500">
+                            Link bis {new Intl.DateTimeFormat("de-DE").format(new Date(row.expiresAt))}
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="px-2 py-3">
+                        <form action={confirmCashPaymentReceivedAction}>
+                          <input type="hidden" name="pledgeId" value={row.pledgeId} />
+                          <button
+                            type="submit"
+                            className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-600"
+                          >
+                            Als erhalten markieren
+                          </button>
+                        </form>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
