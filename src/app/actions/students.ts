@@ -54,6 +54,12 @@ type AddStudentsBulkInput = z.input<typeof AddStudentsBulkSchema>;
 
 type StudentInsertPayload = TableInsert<"students">;
 
+type ExistingStudentRow = {
+  class_name: string;
+  first_name: string;
+  last_name: string;
+};
+
 type StudentWriteResult = ActionResult<{
   createdCount: number;
   runId: string;
@@ -97,6 +103,16 @@ function buildStudentInsertPayload(runId: string, student: StudentInput): Studen
     slug,
     qr_code: `student:${slug}`,
   };
+}
+
+function normalizeStudentKey(student: {
+  className: string;
+  firstName: string;
+  lastName: string;
+}): string {
+  return `${student.className.trim().toLowerCase()}|${student.firstName.trim().toLowerCase()}|${student.lastName
+    .trim()
+    .toLowerCase()}`;
 }
 
 async function resolveRunAccessContext(runId: string, accessToken?: string): Promise<ActionResult<RunAccessContext>> {
@@ -265,6 +281,65 @@ async function resolveRunAccessContext(runId: string, accessToken?: string): Pro
 
 async function insertStudents(runId: string, students: StudentInput[]): Promise<StudentWriteResult> {
   const adminSupabase = getSupabaseAdminClient();
+
+  // Guard against duplicates in the incoming payload.
+  const inputKeySet = new Set<string>();
+  for (const student of students) {
+    const key = normalizeStudentKey(student);
+    if (inputKeySet.has(key)) {
+      return {
+        ok: false,
+        error: {
+          code: "CONFLICT",
+          message:
+            "Doppelte Schueler in der Eingabe erkannt (gleiche Klasse, Vorname, Nachname). Bitte CSV/Bulk-Eingabe pruefen.",
+        },
+      };
+    }
+
+    inputKeySet.add(key);
+  }
+
+  // Guard against duplicates that already exist in this run.
+  const { data: existingStudents, error: existingStudentsError } = await adminSupabase
+    .from("students")
+    .select("class_name, first_name, last_name")
+    .eq("run_id", runId);
+
+  if (existingStudentsError) {
+    return {
+      ok: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Vorhandene Schueler konnten nicht geprueft werden.",
+      },
+    };
+  }
+
+  const existingKeySet = new Set(
+    ((existingStudents ?? []) as ExistingStudentRow[]).map((student) =>
+      normalizeStudentKey({
+        className: student.class_name,
+        firstName: student.first_name,
+        lastName: student.last_name,
+      }),
+    ),
+  );
+
+  for (const student of students) {
+    const key = normalizeStudentKey(student);
+    if (existingKeySet.has(key)) {
+      return {
+        ok: false,
+        error: {
+          code: "CONFLICT",
+          message:
+            "Ein oder mehrere Schueler existieren bereits in diesem Event (gleiche Klasse, Vorname, Nachname).",
+        },
+      };
+    }
+  }
+
   const payload = students.map((student) => buildStudentInsertPayload(runId, student));
 
   const { data, error } = await adminSupabase

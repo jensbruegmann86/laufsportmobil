@@ -69,6 +69,17 @@ function downloadCsvTemplate() {
   URL.revokeObjectURL(url);
 }
 
+function downloadCsvErrorReport(errors: string[]) {
+  const content = ["Fehler"].concat(errors).join("\n");
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "schueler-import-fehler.csv";
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export function StudentsManagement({ runId, runTitle, initialAccessToken }: Props) {
   const [isPendingSingle, startSingle] = useTransition();
   const [isPendingBulk, startBulk] = useTransition();
@@ -82,6 +93,7 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
   const qrPdfUrl = initialAccessToken
     ? `/api/runs/${runId}/qr-pdf?access=${encodeURIComponent(initialAccessToken)}`
     : `/api/runs/${runId}/qr-pdf`;
+  const qrPdfByClassUrl = `${qrPdfUrl}${qrPdfUrl.includes("?") ? "&" : "?"}groupByClass=true`;
 
   return (
     <div className="space-y-6">
@@ -215,14 +227,24 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
             </p>
           </div>
 
-          <a
-            href={qrPdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
-          >
-            QR-PDF oeffnen
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={qrPdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+            >
+              QR-PDF Standard
+            </a>
+            <a
+              href={qrPdfByClassUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-50"
+            >
+              QR-PDF nach Klassen
+            </a>
+          </div>
         </div>
       </section>
 
@@ -383,7 +405,16 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
 
         {csvErrors.length > 0 ? (
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-            <p className="text-sm font-semibold text-amber-900">CSV-Fehler</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-amber-900">CSV-Fehler</p>
+              <button
+                type="button"
+                onClick={() => downloadCsvErrorReport(csvErrors)}
+                className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+              >
+                Fehlerbericht herunterladen
+              </button>
+            </div>
             <ul className="mt-2 space-y-1 text-sm text-amber-800">
               {csvErrors.slice(0, 8).map((item) => (
                 <li key={item}>{item}</li>

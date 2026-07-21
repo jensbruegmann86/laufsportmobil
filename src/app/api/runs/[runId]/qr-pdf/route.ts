@@ -9,14 +9,19 @@ import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
 const RunIdSchema = z.uuid();
 
-function groupByClass<T extends { class_name: string }>(items: T[]): T[] {
+function sortStudents<T extends { class_name: string; last_name: string; first_name: string }>(items: T[]): T[] {
   return [...items].sort((a, b) => {
     const classCompare = a.class_name.localeCompare(b.class_name, "de", { sensitivity: "base" });
     if (classCompare !== 0) {
       return classCompare;
     }
 
-    return 0;
+    const lastNameCompare = a.last_name.localeCompare(b.last_name, "de", { sensitivity: "base" });
+    if (lastNameCompare !== 0) {
+      return lastNameCompare;
+    }
+
+    return a.first_name.localeCompare(b.first_name, "de", { sensitivity: "base" });
   });
 }
 
@@ -32,6 +37,8 @@ export async function GET(
 
   const url = new URL(request.url);
   const access = url.searchParams.get("access") ?? undefined;
+  const groupByClass = url.searchParams.get("groupByClass") === "true";
+  const classNameFilter = url.searchParams.get("className")?.trim() ?? "";
 
   const supabase = await createServerComponentSupabaseClient();
   const adminSupabase = getSupabaseAdminClient();
@@ -97,7 +104,13 @@ export async function GET(
     return NextResponse.json({ error: "Schueler konnten nicht geladen werden." }, { status: 500 });
   }
 
-  const students = groupByClass(studentsData ?? []);
+  let students = sortStudents(studentsData ?? []);
+
+  if (classNameFilter) {
+    students = students.filter(
+      (student) => student.class_name.toLowerCase() === classNameFilter.toLowerCase(),
+    );
+  }
 
   if (students.length === 0) {
     return NextResponse.json({ error: "Keine Schueler fuer diesen Lauf vorhanden." }, { status: 404 });
@@ -114,101 +127,161 @@ export async function GET(
   const margin = 24;
   const gutter = 10;
   const cardsPerPage = 5;
-  const cardHeight = (pageHeight - margin * 2 - gutter * (cardsPerPage - 1)) / cardsPerPage;
   const cardWidth = pageWidth - margin * 2;
 
-  let page = doc.addPage([pageWidth, pageHeight]);
+  const renderCards = async (sectionStudents: typeof students, sectionTitle?: string) => {
+    let page = doc.addPage([pageWidth, pageHeight]);
+    let localCardsPerPage = cardsPerPage;
+    let sectionOffsetY = 0;
 
-  for (let index = 0; index < students.length; index += 1) {
-    if (index > 0 && index % cardsPerPage === 0) {
-      page = doc.addPage([pageWidth, pageHeight]);
+    if (sectionTitle) {
+      page.drawText(sectionTitle, {
+        x: margin,
+        y: pageHeight - margin - 16,
+        size: 16,
+        font: fontBold,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+
+      page.drawText(`Lauf: ${run.title}`, {
+        x: margin,
+        y: pageHeight - margin - 34,
+        size: 10,
+        font,
+        color: rgb(0.35, 0.35, 0.35),
+      });
+
+      sectionOffsetY = 44;
+      localCardsPerPage = 4;
     }
 
-    const slotIndex = index % cardsPerPage;
-    const y = pageHeight - margin - cardHeight * (slotIndex + 1) - gutter * slotIndex;
-    const x = margin;
+    const localCardHeight =
+      (pageHeight - margin * 2 - sectionOffsetY - gutter * (localCardsPerPage - 1)) / localCardsPerPage;
 
-    const student = students[index];
-    const sponsorUrl = `${appUrl}/s/${student.token}`;
+    for (let index = 0; index < sectionStudents.length; index += 1) {
+      if (index > 0 && index % localCardsPerPage === 0) {
+        page = doc.addPage([pageWidth, pageHeight]);
 
-    const qrPngDataUrl = await QRCode.toDataURL(sponsorUrl, {
-      errorCorrectionLevel: "M",
-      margin: 1,
-      width: 512,
-    });
-    const qrPngBytes = Buffer.from(qrPngDataUrl.split(",")[1], "base64");
-    const qrImage = await doc.embedPng(qrPngBytes);
+        if (sectionTitle) {
+          page.drawText(sectionTitle, {
+            x: margin,
+            y: pageHeight - margin - 16,
+            size: 16,
+            font: fontBold,
+            color: rgb(0.1, 0.1, 0.1),
+          });
 
-    page.drawRectangle({
-      x,
-      y,
-      width: cardWidth,
-      height: cardHeight,
-      borderWidth: 1,
-      borderColor: rgb(0.8, 0.8, 0.8),
-    });
+          page.drawText(`Lauf: ${run.title}`, {
+            x: margin,
+            y: pageHeight - margin - 34,
+            size: 10,
+            font,
+            color: rgb(0.35, 0.35, 0.35),
+          });
+        }
+      }
 
-    const qrSize = Math.min(92, cardHeight - 24);
-    const qrX = x + 12;
-    const qrY = y + (cardHeight - qrSize) / 2;
-    page.drawImage(qrImage, {
-      x: qrX,
-      y: qrY,
-      width: qrSize,
-      height: qrSize,
-    });
+      const slotIndex = index % localCardsPerPage;
+      const y =
+        pageHeight -
+        margin -
+        sectionOffsetY -
+        localCardHeight * (slotIndex + 1) -
+        gutter * slotIndex;
+      const x = margin;
 
-    const textX = qrX + qrSize + 14;
-    const titleY = y + cardHeight - 22;
+      const student = sectionStudents[index];
+      const sponsorUrl = `${appUrl}/s/${student.token}`;
 
-    page.drawText(`${student.first_name} ${student.last_name}`, {
-      x: textX,
-      y: titleY,
-      size: 14,
-      font: fontBold,
-      color: rgb(0.1, 0.1, 0.1),
-    });
+      const qrPngDataUrl = await QRCode.toDataURL(sponsorUrl, {
+        errorCorrectionLevel: "M",
+        margin: 1,
+        width: 512,
+      });
+      const qrPngBytes = Buffer.from(qrPngDataUrl.split(",")[1], "base64");
+      const qrImage = await doc.embedPng(qrPngBytes);
 
-    page.drawText(`Klasse: ${student.class_name}`, {
-      x: textX,
-      y: titleY - 18,
-      size: 11,
-      font,
-      color: rgb(0.25, 0.25, 0.25),
-    });
+      page.drawRectangle({
+        x,
+        y,
+        width: cardWidth,
+        height: localCardHeight,
+        borderWidth: 1,
+        borderColor: rgb(0.8, 0.8, 0.8),
+      });
 
-    page.drawText(`Lauf: ${run.title}`, {
-      x: textX,
-      y: titleY - 34,
-      size: 11,
-      font,
-      color: rgb(0.25, 0.25, 0.25),
-    });
+      const qrSize = Math.min(92, localCardHeight - 24);
+      const qrX = x + 12;
+      const qrY = y + (localCardHeight - qrSize) / 2;
+      page.drawImage(qrImage, {
+        x: qrX,
+        y: qrY,
+        width: qrSize,
+        height: qrSize,
+      });
 
-    page.drawText("Sponsoring-Link:", {
-      x: textX,
-      y: titleY - 52,
-      size: 10,
-      font,
-      color: rgb(0.4, 0.4, 0.4),
-    });
+      const textX = qrX + qrSize + 14;
+      const titleY = y + localCardHeight - 22;
 
-    const shortUrl = sponsorUrl.length > 65 ? `${sponsorUrl.slice(0, 62)}...` : sponsorUrl;
-    page.drawText(shortUrl, {
-      x: textX,
-      y: titleY - 66,
-      size: 9,
-      font,
-      color: rgb(0.15, 0.15, 0.15),
-    });
+      page.drawText(`${student.first_name} ${student.last_name}`, {
+        x: textX,
+        y: titleY,
+        size: 14,
+        font: fontBold,
+        color: rgb(0.1, 0.1, 0.1),
+      });
 
-    page.drawLine({
-      start: { x: x + 6, y },
-      end: { x: x + cardWidth - 6, y },
-      thickness: 0.8,
-      color: rgb(0.87, 0.87, 0.87),
-      dashArray: [3, 3],
-    });
+      page.drawText(`Klasse: ${student.class_name}`, {
+        x: textX,
+        y: titleY - 18,
+        size: 11,
+        font,
+        color: rgb(0.25, 0.25, 0.25),
+      });
+
+      page.drawText(`Lauf: ${run.title}`, {
+        x: textX,
+        y: titleY - 34,
+        size: 11,
+        font,
+        color: rgb(0.25, 0.25, 0.25),
+      });
+
+      page.drawText("Sponsoring-Link:", {
+        x: textX,
+        y: titleY - 52,
+        size: 10,
+        font,
+        color: rgb(0.4, 0.4, 0.4),
+      });
+
+      const shortUrl = sponsorUrl.length > 65 ? `${sponsorUrl.slice(0, 62)}...` : sponsorUrl;
+      page.drawText(shortUrl, {
+        x: textX,
+        y: titleY - 66,
+        size: 9,
+        font,
+        color: rgb(0.15, 0.15, 0.15),
+      });
+
+      page.drawLine({
+        start: { x: x + 6, y },
+        end: { x: x + cardWidth - 6, y },
+        thickness: 0.8,
+        color: rgb(0.87, 0.87, 0.87),
+        dashArray: [3, 3],
+      });
+    }
+  };
+
+  if (groupByClass) {
+    const classes = [...new Set(students.map((student) => student.class_name))];
+    for (const className of classes) {
+      const classStudents = students.filter((student) => student.class_name === className);
+      await renderCards(classStudents, `Klasse ${className}`);
+    }
+  } else {
+    await renderCards(students);
   }
 
   const bytes = await doc.save();

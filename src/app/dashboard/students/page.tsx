@@ -22,10 +22,11 @@ type RunRow = {
 
 type SearchParams = {
   runId?: string;
+  className?: string;
 };
 
 export default async function DashboardStudentsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const { runId } = await searchParams;
+  const { runId, className } = await searchParams;
   const supabase = await createServerComponentSupabaseClient();
   const adminSupabase = getSupabaseAdminClient();
 
@@ -101,6 +102,28 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
   const runsById = new Map(visibleRuns.map((run) => [run.id, run]));
   const runFilterQuery = selectedRunId ? `?runId=${selectedRunId}` : "";
 
+  const availableClasses = [...new Set(typedStudents.map((student) => student.class_name))].sort((a, b) =>
+    a.localeCompare(b, "de", { sensitivity: "base" }),
+  );
+  const selectedClass = availableClasses.includes(className ?? "") ? (className as string) : null;
+
+  const filteredStudents = selectedClass
+    ? typedStudents.filter((student) => student.class_name === selectedClass)
+    : typedStudents;
+
+  const baseQuery = new URLSearchParams();
+  if (selectedRunId) {
+    baseQuery.set("runId", selectedRunId);
+  }
+
+  const allClassesQuery = baseQuery.toString();
+  const classPdfUrl = selectedRunId
+    ? `/api/runs/${selectedRunId}/qr-pdf?${new URLSearchParams({
+        groupByClass: "true",
+        ...(selectedClass ? { className: selectedClass } : {}),
+      }).toString()}`
+    : null;
+
   const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
 
   return (
@@ -118,15 +141,64 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
               Aktiver Event-Filter: {visibleRuns[0].title} ({new Intl.DateTimeFormat("de-DE").format(new Date(visibleRuns[0].date))})
             </p>
           ) : null}
+
+          <div className="mt-4 space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Klassenfilter</p>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={allClassesQuery ? `/dashboard/students?${allClassesQuery}` : "/dashboard/students"}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                  selectedClass
+                    ? "border border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                    : "bg-zinc-900 text-white"
+                }`}
+              >
+                Alle Klassen
+              </Link>
+
+              {availableClasses.map((item) => {
+                const params = new URLSearchParams(baseQuery.toString());
+                params.set("className", item);
+                const isActive = selectedClass === item;
+
+                return (
+                  <Link
+                    key={item}
+                    href={`/dashboard/students?${params.toString()}`}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                      isActive
+                        ? "bg-zinc-900 text-white"
+                        : "border border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                    }`}
+                  >
+                    Klasse {item}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {classPdfUrl ? (
+            <div className="mt-3">
+              <a
+                href={classPdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex rounded-xl border border-zinc-300 px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-zinc-50"
+              >
+                {selectedClass ? `QR-PDF fuer Klasse ${selectedClass}` : "QR-PDF nach Klassen"}
+              </a>
+            </div>
+          ) : null}
         </header>
 
-        {typedStudents.length === 0 ? (
+        {filteredStudents.length === 0 ? (
           <section className="rounded-2xl border border-zinc-200 bg-white p-6 text-sm text-zinc-600 shadow-sm">
-            Noch keine Schueler vorhanden.
+            Keine Schueler fuer den aktuellen Klassenfilter vorhanden.
           </section>
         ) : (
           <section className="space-y-4">
-            {typedStudents.map((student) => {
+            {filteredStudents.map((student) => {
               const run = runsById.get(student.run_id);
               const studentName = `${student.first_name} ${student.last_name}`;
               const publicLink = `${appUrl}/s/${student.token}`;
