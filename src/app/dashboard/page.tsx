@@ -20,6 +20,10 @@ export default async function DashboardHomePage() {
     .eq("id", user.id)
     .maybeSingle();
 
+  if (!profile) {
+    redirect("/onboarding");
+  }
+
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-5xl space-y-6">
@@ -27,7 +31,7 @@ export default async function DashboardHomePage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Laufsportmobil</p>
             <h1 className="mt-2 text-2xl font-bold text-zinc-900">Dashboard</h1>
-            <p className="mt-2 text-sm text-zinc-600">Eingeloggt als {user.email} ({profile?.role ?? "unbekannt"})</p>
+            <p className="mt-2 text-sm text-zinc-600">Eingeloggt als {user.email} ({profile.role})</p>
           </div>
           <LogoutForm />
         </header>
