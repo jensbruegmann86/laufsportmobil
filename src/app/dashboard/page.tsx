@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { LogoutForm } from "@/components/dashboard/logout-form";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
 export default async function DashboardHomePage() {
@@ -14,13 +15,14 @@ export default async function DashboardHomePage() {
     redirect("/auth/login");
   }
 
-  const { data: profile } = await supabase
+  const adminSupabase = getSupabaseAdminClient();
+  const { data: profile, error: profileError } = await adminSupabase
     .from("profiles")
     .select("role, school_id")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!profile) {
+  if (profileError || !profile) {
     redirect("/onboarding");
   }
 

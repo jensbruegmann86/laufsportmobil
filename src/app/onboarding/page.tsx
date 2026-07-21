@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
 import { OnboardingForm } from "./onboarding-form";
@@ -14,7 +15,8 @@ export default async function OnboardingPage() {
     redirect("/auth/login");
   }
 
-  const { data: profile } = await supabase
+  const adminSupabase = getSupabaseAdminClient();
+  const { data: profile } = await adminSupabase
     .from("profiles")
     .select("id")
     .eq("id", user.id)
