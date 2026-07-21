@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
+import { getAccessibleRunsForProfile } from "@/lib/runs/access";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
@@ -11,13 +13,6 @@ type StudentRow = {
   class_name: string;
   token: string;
   run_id: string;
-};
-
-type RunRow = {
-  id: string;
-  title: string;
-  date: string;
-  status: "draft" | "active" | "completed";
 };
 
 type SearchParams = {
@@ -38,44 +33,20 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
     redirect("/auth/login");
   }
 
-  const { data: profile, error: profileError } = await adminSupabase
-    .from("profiles")
-    .select("role, school_id")
-    .eq("id", user.id)
-    .maybeSingle();
+  const profile = await ensureProvisionedProfileForUser({ userId: user.id, email: user.email });
 
-  if (profileError || !profile) {
+  if (!profile) {
     redirect("/onboarding");
   }
 
-  let allowedRuns: RunRow[] = [];
+  const { data: allowedRuns, error: runsError } = await getAccessibleRunsForProfile({
+    supabase: adminSupabase,
+    profile,
+    userId: user.id,
+  });
 
-  if (profile.role === "admin") {
-    const { data: runs, error: runsError } = await adminSupabase
-      .from("runs")
-      .select("id, title, date, status")
-      .eq("school_id", profile.school_id)
-      .order("date", { ascending: false });
-
-    if (runsError) {
-      console.error("Failed to load school runs for dashboard students", runsError);
-      redirect("/dashboard");
-    }
-
-    allowedRuns = (runs ?? []) as RunRow[];
-  } else if (profile.role === "teacher") {
-    const { data: runs, error: runsError } = await adminSupabase
-      .from("runs")
-      .select("id, title, date, status")
-      .eq("created_by", user.id)
-      .order("date", { ascending: false });
-
-    if (runsError) {
-      console.error("Failed to load teacher runs for dashboard students", runsError);
-      redirect("/dashboard");
-    }
-
-    allowedRuns = (runs ?? []) as RunRow[];
+  if (runsError) {
+    redirect("/dashboard");
   }
 
   const selectedRunId = allowedRuns.some((run) => run.id === runId) ? runId : (allowedRuns[0]?.id ?? null);
@@ -99,7 +70,6 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
     typedStudents = (students ?? []) as StudentRow[];
   }
 
-  const runsById = new Map(visibleRuns.map((run) => [run.id, run]));
   const runFilterQuery = selectedRunId ? `?runId=${selectedRunId}` : "";
 
   const availableClasses = [...new Set(typedStudents.map((student) => student.class_name))].sort((a, b) =>
@@ -197,54 +167,50 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
             Keine Schueler fuer den aktuellen Klassenfilter vorhanden.
           </section>
         ) : (
-          <section className="space-y-4">
-            {filteredStudents.map((student) => {
-              const run = runsById.get(student.run_id);
-              const studentName = `${student.first_name} ${student.last_name}`;
-              const publicLink = `${appUrl}/s/${student.token}`;
+          <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-[0.1em] text-zinc-500">
+                    <th className="px-2 py-3">Nachname</th>
+                    <th className="px-2 py-3">Vorname</th>
+                    <th className="px-2 py-3">Gruppe / Klasse</th>
+                    <th className="px-2 py-3">Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStudents.map((student) => {
+                    const publicLink = `${appUrl}/s/${student.token}`;
 
-              return (
-                <article
-                  key={student.id}
-                  className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
-                >
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-zinc-900">{studentName}</h2>
-                      <p className="text-sm text-zinc-600">Klasse {student.class_name}</p>
-                      {run ? (
-                        <p className="mt-1 text-sm text-zinc-600">
-                          {run.title} ({new Intl.DateTimeFormat("de-DE").format(new Date(run.date))})
-                        </p>
-                      ) : null}
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-2 sm:w-auto sm:grid-cols-3">
-                      <Link
-                        href={publicLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-xl border border-zinc-300 px-4 py-2 text-center text-sm font-medium text-zinc-900 transition hover:bg-zinc-50"
-                      >
-                        Sponsoring-Link
-                      </Link>
-                      <Link
-                        href={`/dashboard/students/${student.id}/qr${runFilterQuery}`}
-                        className="rounded-xl bg-zinc-900 px-4 py-2 text-center text-sm font-semibold text-white transition hover:bg-zinc-700"
-                      >
-                        QR anzeigen
-                      </Link>
-                      <Link
-                        href={publicLink}
-                        className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-center text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
-                      >
-                        Teilen
-                      </Link>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+                    return (
+                      <tr key={student.id} className="border-b border-zinc-100">
+                        <td className="px-2 py-3 text-zinc-900">{student.last_name}</td>
+                        <td className="px-2 py-3 text-zinc-900">{student.first_name}</td>
+                        <td className="px-2 py-3 text-zinc-700">{student.class_name}</td>
+                        <td className="px-2 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            <Link
+                              href={`/dashboard/students/${student.id}/qr${runFilterQuery}`}
+                              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-900 hover:bg-zinc-50"
+                            >
+                              QR
+                            </Link>
+                            <Link
+                              href={publicLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-900 hover:bg-zinc-50"
+                            >
+                              Sponsoring-Link
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </section>
         )}
       </div>

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
+import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
+import { hasRunAccess } from "@/lib/runs/access";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerActionSupabaseClient } from "@/lib/supabase/server";
 
@@ -26,6 +28,7 @@ type RunRow = {
   id: string;
   school_id: string;
   created_by: string;
+  teacher_id: string | null;
 };
 
 export async function confirmCashPaymentReceivedAction(formData: FormData): Promise<void> {
@@ -51,15 +54,8 @@ export async function confirmCashPaymentReceivedAction(formData: FormData): Prom
     return;
   }
 
-  const { data: profile, error: profileError } = await adminSupabase
-    .from("profiles")
-    .select("role, school_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError || !profile) {
-    return;
-  }
+  const profile = await ensureProvisionedProfileForUser({ userId: user.id, email: user.email });
+  if (!profile) return;
 
   const { data: pledge, error: pledgeError } = await adminSupabase
     .from("pledges")
@@ -91,7 +87,7 @@ export async function confirmCashPaymentReceivedAction(formData: FormData): Prom
 
   const { data: run, error: runError } = await adminSupabase
     .from("runs")
-    .select("id, school_id, created_by")
+    .select("id, school_id, created_by, teacher_id")
     .eq("id", typedStudent.run_id)
     .maybeSingle();
 
@@ -101,9 +97,7 @@ export async function confirmCashPaymentReceivedAction(formData: FormData): Prom
 
   const typedRun = run as RunRow;
 
-  const hasAccess =
-    (profile.role === "admin" && typedRun.school_id === profile.school_id) ||
-    (profile.role === "teacher" && typedRun.created_by === user.id);
+  const hasAccess = hasRunAccess({ profile, run: typedRun, userId: user.id });
 
   if (!hasAccess) {
     return;

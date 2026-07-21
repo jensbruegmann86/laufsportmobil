@@ -1,19 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
+import { getAccessibleRunsForProfile } from "@/lib/runs/access";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { toEuro } from "@/lib/payments/calculations";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
 type SearchParams = {
   runId?: string;
-};
-
-type RunRow = {
-  id: string;
-  title: string;
-  date: string;
-  status: "draft" | "active" | "completed";
 };
 
 type StudentRow = {
@@ -67,42 +62,20 @@ export default async function RunsPage({ searchParams }: { searchParams: Promise
     redirect("/auth/login");
   }
 
-  const { data: profile, error: profileError } = await adminSupabase
-    .from("profiles")
-    .select("role, school_id")
-    .eq("id", user.id)
-    .maybeSingle();
+  const profile = await ensureProvisionedProfileForUser({ userId: user.id, email: user.email });
 
-  if (profileError || !profile) {
+  if (!profile) {
     redirect("/onboarding");
   }
 
-  let runs: RunRow[] = [];
+  const { data: runs, error: runsError } = await getAccessibleRunsForProfile({
+    supabase: adminSupabase,
+    profile,
+    userId: user.id,
+  });
 
-  if (profile.role === "admin") {
-    const { data, error } = await adminSupabase
-      .from("runs")
-      .select("id, title, date, status")
-      .eq("school_id", profile.school_id)
-      .order("date", { ascending: false });
-
-    if (error) {
-      redirect("/dashboard");
-    }
-
-    runs = (data ?? []) as RunRow[];
-  } else if (profile.role === "teacher") {
-    const { data, error } = await adminSupabase
-      .from("runs")
-      .select("id, title, date, status")
-      .eq("created_by", user.id)
-      .order("date", { ascending: false });
-
-    if (error) {
-      redirect("/dashboard");
-    }
-
-    runs = (data ?? []) as RunRow[];
+  if (runsError) {
+    redirect("/dashboard");
   }
 
   const selectedRunId = runs.some((run) => run.id === runId) ? runId : (runs[0]?.id ?? null);

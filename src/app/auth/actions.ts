@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerActionSupabaseClient } from "@/lib/supabase/server";
 
@@ -34,6 +35,14 @@ export async function loginAction(input: { email: string; password: string }): P
 
   if (error) {
     return { ok: false, message: "Login fehlgeschlagen. Bitte Daten pruefen." };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    await ensureProvisionedProfileForUser({ userId: user.id, email: user.email });
   }
 
   return { ok: true };
@@ -88,6 +97,18 @@ export async function bootstrapAdminAction(input: {
   }
 
   const adminSupabase = getSupabaseAdminClient();
+
+  const { count: schoolCount, error: schoolCountError } = await adminSupabase
+    .from("schools")
+    .select("id", { count: "exact", head: true });
+
+  if (schoolCountError) {
+    return { ok: false, message: "Systemstatus konnte nicht geladen werden." };
+  }
+
+  if ((schoolCount ?? 0) > 0) {
+    return { ok: false, message: "Die Ersteinrichtung ist bereits abgeschlossen. Dieser Account braucht eine Einladung." };
+  }
 
   const { data: existingProfile, error: existingProfileError } = await adminSupabase
     .from("profiles")

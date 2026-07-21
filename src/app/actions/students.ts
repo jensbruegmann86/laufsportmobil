@@ -73,12 +73,10 @@ type RunAccessContext =
   | {
       mode: "session";
       runId: string;
-      teacherId: string;
     }
   | {
       mode: "token";
       runId: string;
-      teacherId: string;
     };
 
 function slugify(value: string): string {
@@ -155,7 +153,7 @@ async function resolveRunAccessContext(runId: string, accessToken?: string): Pro
         .from("runs")
         .select("id")
         .eq("id", runId)
-        .eq("created_by", user.id)
+        .eq("teacher_id", user.id)
         .maybeSingle();
 
       if (runError) {
@@ -178,7 +176,7 @@ async function resolveRunAccessContext(runId: string, accessToken?: string): Pro
         };
       }
 
-      return { ok: true, data: { mode: "session", runId, teacherId: user.id } };
+      return { ok: true, data: { mode: "session", runId } };
     }
 
     if (profile.role === "admin") {
@@ -209,7 +207,7 @@ async function resolveRunAccessContext(runId: string, accessToken?: string): Pro
         };
       }
 
-      return { ok: true, data: { mode: "session", runId, teacherId: run.created_by } };
+      return { ok: true, data: { mode: "session", runId } };
     }
   }
 
@@ -250,7 +248,6 @@ async function resolveRunAccessContext(runId: string, accessToken?: string): Pro
     .from("runs")
     .select("id")
     .eq("id", runId)
-    .eq("created_by", tokenPayload.teacherId)
     .maybeSingle();
 
   if (runError) {
@@ -275,7 +272,7 @@ async function resolveRunAccessContext(runId: string, accessToken?: string): Pro
 
   return {
     ok: true,
-    data: { mode: "token", runId, teacherId: tokenPayload.teacherId },
+    data: { mode: "token", runId },
   };
 }
 

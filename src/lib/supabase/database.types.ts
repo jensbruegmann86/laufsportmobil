@@ -131,6 +131,7 @@ export type Database = {
           id: string;
           school_id: string;
           status: Database["public"]["Enums"]["run_status"];
+          teacher_id: string | null;
           title: string;
           updated_at: string;
         };
@@ -141,6 +142,7 @@ export type Database = {
           id?: string;
           school_id: string;
           status?: Database["public"]["Enums"]["run_status"];
+          teacher_id?: string | null;
           title: string;
           updated_at?: string;
         };
@@ -151,6 +153,7 @@ export type Database = {
           id?: string;
           school_id?: string;
           status?: Database["public"]["Enums"]["run_status"];
+          teacher_id?: string | null;
           title?: string;
           updated_at?: string;
         };
@@ -160,6 +163,13 @@ export type Database = {
             columns: ["school_id"];
             isOneToOne: false;
             referencedRelation: "schools";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "runs_teacher_id_fkey";
+            columns: ["teacher_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
         ];
@@ -225,6 +235,71 @@ export type Database = {
             columns: ["run_id"];
             isOneToOne: false;
             referencedRelation: "runs";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      teacher_invites: {
+        Row: {
+          accepted_at: string | null;
+          created_at: string;
+          email: string;
+          id: string;
+          invited_by: string;
+          run_id: string;
+          school_id: string;
+          teacher_user_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          accepted_at?: string | null;
+          created_at?: string;
+          email: string;
+          id?: string;
+          invited_by: string;
+          run_id: string;
+          school_id: string;
+          teacher_user_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          accepted_at?: string | null;
+          created_at?: string;
+          email?: string;
+          id?: string;
+          invited_by?: string;
+          run_id?: string;
+          school_id?: string;
+          teacher_user_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "teacher_invites_invited_by_fkey";
+            columns: ["invited_by"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "teacher_invites_run_id_fkey";
+            columns: ["run_id"];
+            isOneToOne: true;
+            referencedRelation: "runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "teacher_invites_school_id_fkey";
+            columns: ["school_id"];
+            isOneToOne: false;
+            referencedRelation: "schools";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "teacher_invites_teacher_user_id_fkey";
+            columns: ["teacher_user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
         ];

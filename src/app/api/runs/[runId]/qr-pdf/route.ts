@@ -3,6 +3,8 @@ import QRCode from "qrcode";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
+import { hasRunAccess } from "@/lib/runs/access";
 import { verifyTeacherRunAccessToken } from "@/lib/security/teacher-run-access-token";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
@@ -49,7 +51,7 @@ export async function GET(
 
   const { data: run, error: runError } = await adminSupabase
     .from("runs")
-    .select("id, title, school_id, created_by")
+    .select("id, title, school_id, created_by, teacher_id")
     .eq("id", runId)
     .maybeSingle();
 
@@ -58,19 +60,13 @@ export async function GET(
   }
 
   if (user) {
-    const { data: profile, error: profileError } = await adminSupabase
-      .from("profiles")
-      .select("role, school_id")
-      .eq("id", user.id)
-      .maybeSingle();
+    const profile = await ensureProvisionedProfileForUser({ userId: user.id, email: user.email });
 
-    if (profileError || !profile) {
+    if (!profile) {
       return NextResponse.json({ error: "Profil nicht gefunden." }, { status: 403 });
     }
 
-    const hasAccess =
-      (profile.role === "admin" && profile.school_id === run.school_id) ||
-      (profile.role === "teacher" && run.created_by === user.id);
+    const hasAccess = hasRunAccess({ profile, run, userId: user.id });
 
     if (!hasAccess) {
       return NextResponse.json({ error: "Keine Berechtigung." }, { status: 403 });
@@ -88,7 +84,7 @@ export async function GET(
       return NextResponse.json({ error: "Token ungueltig." }, { status: 403 });
     }
 
-    if (tokenPayload.runId !== runId || tokenPayload.teacherId !== run.created_by) {
+    if (tokenPayload.runId !== runId) {
       return NextResponse.json({ error: "Token ungueltig fuer diesen Lauf." }, { status: 403 });
     }
   }

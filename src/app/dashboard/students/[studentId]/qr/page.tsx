@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { StudentQrCard } from "@/components/dashboard/student-qr-card";
+import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
+import { hasRunAccess } from "@/lib/runs/access";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
@@ -29,13 +31,9 @@ export default async function StudentQrPage({ params }: { params: Promise<PagePa
     redirect("/auth/login");
   }
 
-  const { data: profile, error: profileError } = await adminSupabase
-    .from("profiles")
-    .select("role, school_id")
-    .eq("id", user.id)
-    .maybeSingle();
+  const profile = await ensureProvisionedProfileForUser({ userId: user.id, email: user.email });
 
-  if (profileError || !profile) {
+  if (!profile) {
     redirect("/onboarding");
   }
 
@@ -56,7 +54,7 @@ export default async function StudentQrPage({ params }: { params: Promise<PagePa
 
   const { data: run, error: runError } = await adminSupabase
     .from("runs")
-    .select("id, title, date, created_by, school_id")
+    .select("id, title, date, created_by, school_id, teacher_id")
     .eq("id", student.run_id)
     .maybeSingle();
 
@@ -69,12 +67,7 @@ export default async function StudentQrPage({ params }: { params: Promise<PagePa
     redirect("/dashboard/students");
   }
 
-  const canAccessRun =
-    profile.role === "admin"
-      ? run.school_id === profile.school_id
-      : profile.role === "teacher"
-        ? run.created_by === user.id
-        : false;
+  const canAccessRun = hasRunAccess({ profile, run, userId: user.id });
 
   if (!canAccessRun) {
     redirect("/dashboard/students");

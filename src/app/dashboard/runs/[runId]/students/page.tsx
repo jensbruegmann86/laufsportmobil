@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
+import { hasRunAccess } from "@/lib/runs/access";
 import { verifyTeacherRunAccessToken } from "@/lib/security/teacher-run-access-token";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
@@ -39,7 +41,7 @@ export default async function RunStudentsManagementPage({
 
   const { data: run, error: runError } = await adminSupabase
     .from("runs")
-    .select("id, title, school_id, created_by")
+    .select("id, title, school_id, created_by, teacher_id")
     .eq("id", runId)
     .maybeSingle();
 
@@ -48,19 +50,13 @@ export default async function RunStudentsManagementPage({
   }
 
   if (user) {
-    const { data: profile, error: profileError } = await adminSupabase
-      .from("profiles")
-      .select("role, school_id")
-      .eq("id", user.id)
-      .maybeSingle();
+    const profile = await ensureProvisionedProfileForUser({ userId: user.id, email: user.email });
 
-    if (profileError || !profile) {
+    if (!profile) {
       notFound();
     }
 
-    const hasAccess =
-      (profile.role === "admin" && profile.school_id === run.school_id) ||
-      (profile.role === "teacher" && run.created_by === user.id);
+    const hasAccess = hasRunAccess({ profile, run, userId: user.id });
 
     if (!hasAccess) {
       notFound();
@@ -78,7 +74,7 @@ export default async function RunStudentsManagementPage({
       notFound();
     }
 
-    if (tokenPayload.runId !== runId || tokenPayload.teacherId !== run.created_by) {
+    if (tokenPayload.runId !== runId) {
       notFound();
     }
   }
@@ -92,7 +88,13 @@ export default async function RunStudentsManagementPage({
           <p className="mt-1 text-sm text-zinc-600">Schueler einzeln oder als Bulk erfassen.</p>
         </header>
 
-        <StudentsManagement runId={run.id} runTitle={run.title} initialAccessToken={access} />
+        <StudentsManagement
+          runId={run.id}
+          runTitle={run.title}
+          initialAccessToken={access}
+          showTeacherLink={false}
+          showBulk={false}
+        />
       </div>
     </main>
   );

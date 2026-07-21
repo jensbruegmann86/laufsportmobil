@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
+import { getAccessibleRunsForProfile } from "@/lib/runs/access";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { toEuro } from "@/lib/payments/calculations";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
@@ -36,13 +38,6 @@ type PaymentLinkRow = {
   amount_cents: number;
   paid_at: string | null;
   expires_at: string;
-};
-
-type WebhookEventRow = {
-  id: string;
-  event_type: string;
-  processing_status: string;
-  created_at: string;
 };
 
 type RunAggregate = {
@@ -87,44 +82,20 @@ export default async function DashboardSponsoringPage({ searchParams }: { search
     redirect("/auth/login");
   }
 
-  const { data: profile, error: profileError } = await adminSupabase
-    .from("profiles")
-    .select("role, school_id")
-    .eq("id", user.id)
-    .maybeSingle();
+  const profile = await ensureProvisionedProfileForUser({ userId: user.id, email: user.email });
 
-  if (profileError || !profile) {
+  if (!profile) {
     redirect("/onboarding");
   }
 
-  let allowedRuns: RunRow[] = [];
+  const { data: allowedRuns, error: runsError } = await getAccessibleRunsForProfile({
+    supabase: adminSupabase,
+    profile,
+    userId: user.id,
+  });
 
-  if (profile.role === "admin") {
-    const { data: runs, error: runsError } = await adminSupabase
-      .from("runs")
-      .select("id, title, date, status, created_by, school_id")
-      .eq("school_id", profile.school_id)
-      .order("date", { ascending: false });
-
-    if (runsError) {
-      console.error("Failed to load school runs for sponsoring dashboard", runsError);
-      redirect("/dashboard");
-    }
-
-    allowedRuns = (runs ?? []) as RunRow[];
-  } else if (profile.role === "teacher") {
-    const { data: runs, error: runsError } = await adminSupabase
-      .from("runs")
-      .select("id, title, date, status, created_by, school_id")
-      .eq("created_by", user.id)
-      .order("date", { ascending: false });
-
-    if (runsError) {
-      console.error("Failed to load teacher runs for sponsoring dashboard", runsError);
-      redirect("/dashboard");
-    }
-
-    allowedRuns = (runs ?? []) as RunRow[];
+  if (runsError) {
+    redirect("/dashboard");
   }
 
   const selectedRunId = allowedRuns.some((run) => run.id === runId) ? runId : (allowedRuns[0]?.id ?? null);
@@ -180,12 +151,6 @@ export default async function DashboardSponsoringPage({ searchParams }: { search
 
     paymentLinks = (data ?? []) as PaymentLinkRow[];
   }
-
-  const { data: webhookEvents } = await adminSupabase
-    .from("stripe_webhook_events")
-    .select("id, event_type, processing_status, created_at")
-    .order("created_at", { ascending: false })
-    .limit(20);
 
   const studentById = new Map(students.map((student) => [student.id, student]));
   const runById = new Map(visibleRuns.map((run) => [run.id, run]));
@@ -294,9 +259,6 @@ export default async function DashboardSponsoringPage({ searchParams }: { search
     (a, b) => new Date(b.run.date).getTime() - new Date(a.run.date).getTime(),
   );
   const runFilterQuery = selectedRunId ? `?runId=${selectedRunId}` : "";
-
-  const webhookRows = (webhookEvents ?? []) as WebhookEventRow[];
-  const failedWebhooks = webhookRows.filter((event) => event.processing_status !== "processed").length;
 
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
@@ -469,52 +431,6 @@ export default async function DashboardSponsoringPage({ searchParams }: { search
           )}
         </section>
 
-        <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-zinc-900">Stripe Webhook Health</h2>
-          <p className="mt-1 text-sm text-zinc-600">
-            Letzte 20 Events, um Statusupdates schnell zu pruefen. Nicht-processed in diesem Fenster: {failedWebhooks}.
-          </p>
-
-          {webhookRows.length === 0 ? (
-            <p className="mt-3 text-sm text-zinc-600">Noch keine Webhook-Events gespeichert.</p>
-          ) : (
-            <div className="mt-3 overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-[0.1em] text-zinc-500">
-                    <th className="px-2 py-2">Zeit</th>
-                    <th className="px-2 py-2">Event</th>
-                    <th className="px-2 py-2">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {webhookRows.map((event) => (
-                    <tr key={event.id} className="border-b border-zinc-100">
-                      <td className="px-2 py-2 text-xs text-zinc-600">
-                        {new Intl.DateTimeFormat("de-DE", {
-                          dateStyle: "short",
-                          timeStyle: "short",
-                        }).format(new Date(event.created_at))}
-                      </td>
-                      <td className="px-2 py-2 text-zinc-800">{event.event_type}</td>
-                      <td className="px-2 py-2">
-                        <span
-                          className={
-                            event.processing_status === "processed"
-                              ? "rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-800"
-                              : "rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800"
-                          }
-                        >
-                          {event.processing_status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
       </div>
     </main>
   );

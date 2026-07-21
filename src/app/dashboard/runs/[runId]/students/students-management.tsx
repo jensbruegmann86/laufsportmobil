@@ -9,6 +9,8 @@ type Props = {
   runId: string;
   runTitle: string;
   initialAccessToken?: string;
+  showTeacherLink?: boolean;
+  showBulk?: boolean;
 };
 
 type ParsedStudent = {
@@ -80,7 +82,13 @@ function downloadCsvErrorReport(errors: string[]) {
   URL.revokeObjectURL(url);
 }
 
-export function StudentsManagement({ runId, runTitle, initialAccessToken }: Props) {
+export function StudentsManagement({
+  runId,
+  runTitle,
+  initialAccessToken,
+  showTeacherLink = true,
+  showBulk = true,
+}: Props) {
   const [isPendingSingle, startSingle] = useTransition();
   const [isPendingBulk, startBulk] = useTransition();
   const [isPendingLink, startLink] = useTransition();
@@ -97,6 +105,7 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
 
   return (
     <div className="space-y-6">
+      {showTeacherLink ? (
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-zinc-900">Lehrerzugang per Link</h2>
         <p className="mt-1 text-sm text-zinc-600">
@@ -158,7 +167,9 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
           </div>
         ) : null}
       </section>
+      ) : null}
 
+      {showBulk ? (
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-zinc-900">Einzelnen Schueler eintragen</h2>
 
@@ -217,6 +228,7 @@ export function StudentsManagement({ runId, runTitle, initialAccessToken }: Prop
           </button>
         </form>
       </section>
+      ) : null}
 
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">

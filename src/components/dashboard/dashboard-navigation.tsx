@@ -3,11 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-type NavItem = {
-  href: string;
-  label: string;
-};
-
 type RunOption = {
   id: string;
   title: string;
@@ -15,7 +10,6 @@ type RunOption = {
 };
 
 type DashboardNavigationProps = {
-  navItems: NavItem[];
   runOptions: RunOption[];
   role: "admin" | "teacher" | null;
 };
@@ -25,7 +19,7 @@ function toLabel(run: RunOption): string {
   return `${run.title} (${date})`;
 }
 
-export function DashboardNavigation({ navItems, runOptions, role }: DashboardNavigationProps) {
+export function DashboardNavigation({ runOptions, role }: DashboardNavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -45,6 +39,19 @@ export function DashboardNavigation({ navItems, runOptions, role }: DashboardNav
     url.searchParams.set("runId", selectedRunId);
     return `${url.pathname}?${url.searchParams.toString()}`;
   };
+
+  const isActive = (href: string) => pathname === href;
+
+  const eventLinks = [
+    ...(role === "admin" ? [{ href: "/dashboard/runs/new", label: "Neues Event" }] : []),
+    { href: "/dashboard/event/settings", label: "Einstellungen" },
+    { href: "/dashboard/event/teacher-access", label: "Lehrerzugang per Link" },
+  ];
+
+  const participantLinks = [
+    { href: "/dashboard/students", label: "Uebersicht" },
+    { href: "/dashboard/students/new", label: "Neue Teilnehmer" },
+  ];
 
   const handleRunChange = (nextRunId: string) => {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -83,15 +90,66 @@ export function DashboardNavigation({ navItems, runOptions, role }: DashboardNav
       </div>
 
       <nav className="space-y-2">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={buildHref(item.href)}
-            className="block rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-900"
-          >
-            {item.label}
-          </Link>
-        ))}
+        <Link
+          href={buildHref("/dashboard")}
+          className={`block rounded-lg px-3 py-2 text-sm font-medium transition ${
+            isActive("/dashboard") ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+          }`}
+        >
+          Uebersicht
+        </Link>
+
+        <details open={pathname.startsWith("/dashboard/event") || pathname.startsWith("/dashboard/runs/new")} className="rounded-lg border border-zinc-200">
+          <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-zinc-800">Event</summary>
+          <div className="space-y-1 px-2 pb-2">
+            {eventLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={buildHref(item.href)}
+                className={`block rounded-lg px-3 py-2 text-sm transition ${
+                  isActive(item.href) ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </details>
+
+        <details open={pathname.startsWith("/dashboard/students")} className="rounded-lg border border-zinc-200">
+          <summary className="cursor-pointer list-none px-3 py-2 text-sm font-semibold text-zinc-800">Teilnehmer</summary>
+          <div className="space-y-1 px-2 pb-2">
+            {participantLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={buildHref(item.href)}
+                className={`block rounded-lg px-3 py-2 text-sm transition ${
+                  isActive(item.href) ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+                }`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </details>
+
+        <Link
+          href={buildHref("/dashboard/sponsoring")}
+          className={`block rounded-lg px-3 py-2 text-sm font-medium transition ${
+            isActive("/dashboard/sponsoring") ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+          }`}
+        >
+          Sponsoring
+        </Link>
+
+        <Link
+          href={buildHref("/dashboard/results")}
+          className={`block rounded-lg px-3 py-2 text-sm font-medium transition ${
+            isActive("/dashboard/results") ? "bg-zinc-900 text-white" : "text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
+          }`}
+        >
+          Ergebnisse
+        </Link>
       </nav>
     </div>
   );

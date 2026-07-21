@@ -2,8 +2,10 @@
 
 import { z } from "zod";
 
+import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
 import { sendSponsorNotificationEmail } from "@/lib/email/smtp";
 import { processRunResultsAndGenerateNotifications } from "@/lib/payments/post-run";
+import { hasRunAccess } from "@/lib/runs/access";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerActionSupabaseClient } from "@/lib/supabase/server";
 
@@ -71,13 +73,9 @@ export async function saveLapResultsAction(input: {
     };
   }
 
-  const { data: profile, error: profileError } = await adminSupabase
-    .from("profiles")
-    .select("role, school_id")
-    .eq("id", user.id)
-    .maybeSingle();
+  const profile = await ensureProvisionedProfileForUser({ userId: user.id, email: user.email });
 
-  if (profileError || !profile) {
+  if (!profile) {
     return {
       ok: false,
       error: { code: "INTERNAL_ERROR", message: "Profil konnte nicht geladen werden." },
@@ -86,7 +84,7 @@ export async function saveLapResultsAction(input: {
 
   const { data: run, error: runError } = await adminSupabase
     .from("runs")
-    .select("id, school_id, created_by")
+    .select("id, school_id, created_by, teacher_id")
     .eq("id", parsed.data.runId)
     .maybeSingle();
 
@@ -97,9 +95,7 @@ export async function saveLapResultsAction(input: {
     };
   }
 
-  const hasAccess =
-    (profile.role === "admin" && run.school_id === profile.school_id) ||
-    (profile.role === "teacher" && run.created_by === user.id);
+  const hasAccess = hasRunAccess({ profile, run, userId: user.id });
 
   if (!hasAccess) {
     return {

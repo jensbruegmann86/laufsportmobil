@@ -9,6 +9,12 @@ type SponsorNotificationEmail = {
   paymentLink: string;
 };
 
+type TeacherInvitationEmail = {
+  teacherEmail: string;
+  eventTitle: string;
+  registerUrl: string;
+};
+
 function getSmtpConfig() {
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT ?? "587");
@@ -72,6 +78,38 @@ export async function sendSponsorNotificationEmail(input: SponsorNotificationEma
   await transporter.sendMail({
     from: config.from,
     to: input.sponsorEmail,
+    subject,
+    text,
+    html,
+  });
+}
+
+export async function sendTeacherInvitationEmail(input: TeacherInvitationEmail): Promise<void> {
+  const config = getSmtpConfig();
+  const transporter = createTransporter();
+
+  const subject = `Einladung als Lehrkraft fuer ${input.eventTitle}`;
+  const text = [
+    "Hallo,",
+    "",
+    `du wurdest als Lehrkraft fuer das Event \"${input.eventTitle}\" eingeladen.`,
+    "Bitte registriere dich mit dieser E-Mail-Adresse und logge dich danach ein:",
+    input.registerUrl,
+    "",
+    "Nach erfolgreicher Registrierung ist das Event automatisch in deinem Dashboard sichtbar.",
+  ].join("\n");
+
+  const html = `
+    <p>Hallo,</p>
+    <p>du wurdest als Lehrkraft fuer das Event <strong>${input.eventTitle}</strong> eingeladen.</p>
+    <p>Bitte registriere dich mit dieser E-Mail-Adresse und logge dich danach ein:</p>
+    <p><a href="${input.registerUrl}">${input.registerUrl}</a></p>
+    <p>Nach erfolgreicher Registrierung ist das Event automatisch in deinem Dashboard sichtbar.</p>
+  `;
+
+  await transporter.sendMail({
+    from: config.from,
+    to: input.teacherEmail,
     subject,
     text,
     html,

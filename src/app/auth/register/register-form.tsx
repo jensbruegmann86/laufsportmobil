@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 
 import { registerAction } from "@/app/auth/actions";
 
-export function RegisterForm() {
+export function RegisterForm({ initialEmail = "" }: { initialEmail?: string }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -41,6 +41,7 @@ export function RegisterForm() {
           id="email"
           name="email"
           type="email"
+          defaultValue={initialEmail}
           required
           className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
         />
