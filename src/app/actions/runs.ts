@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import { createTeacherRunAccessToken } from "@/lib/security/teacher-run-access-token";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { PublicEnum, TableRow } from "@/lib/supabase/database.types";
 import { createServerActionSupabaseClient } from "@/lib/supabase/server";
 
@@ -68,6 +69,7 @@ export async function createRunAction(input: CreateRunInput): Promise<CreateRunR
   }
 
   const supabase = await createServerActionSupabaseClient();
+  const adminSupabase = getSupabaseAdminClient();
   const {
     data: { user },
     error: userError,
@@ -80,7 +82,7 @@ export async function createRunAction(input: CreateRunInput): Promise<CreateRunR
     };
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await adminSupabase
     .from("profiles")
     .select("role, school_id")
     .eq("id", user.id)
@@ -127,7 +129,7 @@ export async function createRunAction(input: CreateRunInput): Promise<CreateRunR
     created_by: user.id,
   };
 
-  const { data: run, error: insertError } = await supabase
+  const { data: run, error: insertError } = await adminSupabase
     .from("runs")
     .insert(payload)
     .select("id, school_id, title, date, status, created_by")
@@ -161,6 +163,7 @@ export async function createTeacherAccessLinkAction(input: {
   }
 
   const supabase = await createServerActionSupabaseClient();
+  const adminSupabase = getSupabaseAdminClient();
   const {
     data: { user },
     error: userError,
@@ -173,7 +176,7 @@ export async function createTeacherAccessLinkAction(input: {
     };
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await adminSupabase
     .from("profiles")
     .select("role, school_id")
     .eq("id", user.id)
@@ -186,7 +189,7 @@ export async function createTeacherAccessLinkAction(input: {
     };
   }
 
-  const { data: run, error: runError } = await supabase
+  const { data: run, error: runError } = await adminSupabase
     .from("runs")
     .select("id, school_id, created_by")
     .eq("id", parsed.data.runId)
