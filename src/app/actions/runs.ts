@@ -36,6 +36,7 @@ const CreateRunSchema = z.object({
   title: z.string().trim().min(3).max(120),
   date: z.iso.date(),
   teacherEmail: z.email(),
+  lapDistanceKm: z.number().positive().max(100).nullable().optional(),
   status: RunStatusSchema.default("draft"),
   schoolId: z.uuid().optional(),
 });
@@ -49,9 +50,10 @@ const UpdateRunSettingsSchema = z.object({
   title: z.string().trim().min(3).max(120),
   date: z.iso.date(),
   teacherEmail: z.email(),
+  lapDistanceKm: z.number().positive().max(100).nullable().optional(),
 });
 
-type UpdateRunSettingsResult = ActionResult<Pick<RunRow, "id" | "title" | "date" | "teacher_id">>;
+type UpdateRunSettingsResult = ActionResult<Pick<RunRow, "id" | "title" | "date" | "teacher_id" | "lap_distance_km">>;
 
 const CreateTeacherAccessLinkSchema = z.object({
   runId: z.uuid(),
@@ -183,6 +185,7 @@ export async function createRunAction(input: CreateRunInput): Promise<CreateRunR
     school_id: schoolId,
     title: parsed.data.title,
     date: parsed.data.date,
+    lap_distance_km: parsed.data.lapDistanceKm ?? null,
     status: parsed.data.status as PublicEnum<"run_status">,
     created_by: user.id,
     teacher_id: null,
@@ -225,6 +228,7 @@ export async function updateRunSettingsAction(input: {
   title: string;
   date: string;
   teacherEmail: string;
+  lapDistanceKm?: number | null;
 }): Promise<UpdateRunSettingsResult> {
   const parsed = UpdateRunSettingsSchema.safeParse(input);
 
@@ -290,9 +294,9 @@ export async function updateRunSettingsAction(input: {
 
   const { data: updatedRun, error: updateError } = await adminSupabase
     .from("runs")
-    .update({ title: parsed.data.title, date: parsed.data.date })
+    .update({ title: parsed.data.title, date: parsed.data.date, lap_distance_km: parsed.data.lapDistanceKm ?? null })
     .eq("id", parsed.data.runId)
-    .select("id, title, date, teacher_id")
+    .select("id, title, date, teacher_id, lap_distance_km")
     .single();
 
   if (updateError || !updatedRun) {

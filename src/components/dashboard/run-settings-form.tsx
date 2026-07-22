@@ -9,10 +9,11 @@ type Props = {
   initialTitle: string;
   initialDate: string;
   initialTeacherEmail: string;
+  initialLapDistanceKm?: number | null;
   canEditTeacherEmail?: boolean;
 };
 
-export function RunSettingsForm({ runId, initialTitle, initialDate, initialTeacherEmail, canEditTeacherEmail = true }: Props) {
+export function RunSettingsForm({ runId, initialTitle, initialDate, initialTeacherEmail, initialLapDistanceKm = null, canEditTeacherEmail = true }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -29,9 +30,11 @@ export function RunSettingsForm({ runId, initialTitle, initialDate, initialTeach
         const title = String(formData.get("title") ?? "");
         const date = String(formData.get("date") ?? "");
         const teacherEmail = String(formData.get("teacherEmail") ?? "");
+        const lapDistanceRaw = String(formData.get("lapDistanceKm") ?? "");
+        const lapDistanceKm = lapDistanceRaw ? Number(lapDistanceRaw) : null;
 
         startTransition(async () => {
-          const result = await updateRunSettingsAction({ runId, title, date, teacherEmail });
+          const result = await updateRunSettingsAction({ runId, title, date, teacherEmail, lapDistanceKm });
 
           if (!result.ok) {
             setError(result.error.message);
@@ -79,6 +82,21 @@ export function RunSettingsForm({ runId, initialTitle, initialDate, initialTeach
         {!canEditTeacherEmail ? (
           <p className="mt-1 text-xs text-zinc-500">Nur Admins koennen die Lehrer-E-Mail aendern.</p>
         ) : null}
+      </div>
+
+      <div>
+        <label htmlFor="lapDistanceKm" className="text-sm font-medium text-zinc-700">Km pro Runde</label>
+        <input
+          id="lapDistanceKm"
+          name="lapDistanceKm"
+          type="number"
+          min="0.01"
+          step="0.01"
+          defaultValue={initialLapDistanceKm ?? ""}
+          className="mt-1 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
+          placeholder="z. B. 0.40"
+        />
+        <p className="mt-1 text-xs text-zinc-500">Damit koennen Kilometer aus den eingetragenen Runden automatisch berechnet werden.</p>
       </div>
 
       {error ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}

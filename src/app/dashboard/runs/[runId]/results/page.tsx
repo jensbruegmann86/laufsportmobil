@@ -40,7 +40,7 @@ export default async function RunResultsPage({ params }: { params: Promise<PageP
 
   const { data: run, error: runError } = await adminSupabase
     .from("runs")
-    .select("id, title, date, status, created_by, school_id, teacher_id")
+    .select("id, title, date, lap_distance_km, status, created_by, school_id, teacher_id")
     .eq("id", runId)
     .maybeSingle();
 
@@ -90,10 +90,13 @@ export default async function RunResultsPage({ params }: { params: Promise<PageP
           <p className="mt-1 text-sm text-zinc-600">
             Lauf: {run.title} ({new Intl.DateTimeFormat("de-DE").format(new Date(run.date))})
           </p>
+          {run.lap_distance_km ? (
+            <p className="mt-2 text-xs text-zinc-500">1 Runde = {new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(run.lap_distance_km)} km</p>
+          ) : null}
         </section>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <LapInputForm runId={run.id} students={studentItems} />
+          <LapInputForm runId={run.id} students={studentItems} lapDistanceKm={run.lap_distance_km} />
         </section>
       </div>
     </main>

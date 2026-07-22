@@ -10,6 +10,11 @@ type SearchParams = {
   runId?: string;
 };
 
+type RunResultRow = {
+  student_id: string;
+  laps_completed: number;
+};
+
 export default async function DashboardHomePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { runId } = await searchParams;
   const supabase = await createServerComponentSupabaseClient();
@@ -47,7 +52,7 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
   const studentIds = (students ?? []).map((student) => student.id);
 
   const { data: runResults } = studentIds.length
-    ? await adminSupabase.from("run_results").select("student_id").in("student_id", studentIds)
+    ? await adminSupabase.from("run_results").select("student_id, laps_completed").in("student_id", studentIds)
     : { data: [] };
 
   const { data: pledges } = studentIds.length
@@ -81,6 +86,9 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
   const openCents = Math.max(expectedCents - paidCents, 0);
   const cashOpen = (pledges ?? []).filter((pledge) => pledge.payment_method_choice === "cash" && pledge.status !== "paid").length;
   const resultProgress = participantsCount > 0 ? Math.round((resultsCount / participantsCount) * 100) : 0;
+  const typedRunResults = (runResults ?? []) as RunResultRow[];
+  const totalLaps = typedRunResults.reduce((sum, item) => sum + item.laps_completed, 0);
+  const totalKilometers = selectedRun.lap_distance_km ? totalLaps * selectedRun.lap_distance_km : null;
 
   const statCards = [
     { label: "Teilnehmer", value: String(participantsCount), hint: "Im ausgewaehlten Event" },
@@ -88,6 +96,7 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
     { label: "Offen", value: `${toEuro(openCents).toFixed(2)} EUR`, hint: "Noch nicht bezahlt" },
     { label: "Sponsoren", value: String(sponsorsCount), hint: "Pledges insgesamt" },
     { label: "Runden erfasst", value: `${resultsCount}/${participantsCount}`, hint: `${resultProgress}% Fortschritt` },
+    { label: "Kilometer gesamt", value: totalKilometers != null ? `${new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalKilometers)} km` : "-", hint: selectedRun.lap_distance_km ? `${totalLaps} Runden x ${new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(selectedRun.lap_distance_km)} km` : "Km pro Runde noch nicht gesetzt" },
     { label: "Bar offen", value: String(cashOpen), hint: "Noch zu bestaetigen" },
   ];
 
@@ -120,6 +129,9 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
             </div>
             <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700">
               Noch unbezahlte Sponsoren: <span className="font-semibold text-zinc-900">{(pledges ?? []).filter((pledge) => pledge.status !== "paid").length}</span>
+            </div>
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-700 sm:col-span-2">
+              Km pro Runde: <span className="font-semibold text-zinc-900">{selectedRun.lap_distance_km ? `${new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(selectedRun.lap_distance_km)} km` : "Noch nicht gesetzt"}</span>
             </div>
           </div>
         </section>

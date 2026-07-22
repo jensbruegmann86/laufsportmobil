@@ -69,6 +69,7 @@ export default async function EventSettingsPage({ searchParams }: { searchParams
             initialTitle={selectedRun.title}
             initialDate={selectedRun.date}
             initialTeacherEmail={invite?.email ?? ""}
+            initialLapDistanceKm={selectedRun.lap_distance_km}
             canEditTeacherEmail={profile.role === "admin"}
           />
         </section>

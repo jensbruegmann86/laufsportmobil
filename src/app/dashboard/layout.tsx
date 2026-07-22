@@ -79,17 +79,19 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
         </div>
       </header>
 
-      <div className="mx-auto grid w-full max-w-[1400px] grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:px-8">
-        <aside className="sticky top-[5.25rem] hidden h-[calc(100vh-6.5rem)] shrink-0 overflow-y-auto border-r border-zinc-200 bg-white px-4 py-5 md:block">
+      <div className="grid w-full grid-cols-1 gap-0 lg:grid-cols-[300px_minmax(0,1fr)]">
+        <aside className="hidden self-start border-r border-zinc-200 bg-white md:block lg:sticky lg:top-[4.5rem]">
+          <div className="px-5 py-6">
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Laufsportmobil</p>
           <p className="mb-4 text-xs text-zinc-500">{user.email} ({profile?.role ?? "ohne Rolle"})</p>
           <DashboardNavigation runOptions={runOptions} role={profile.role} />
           <div className="mt-4 border-t border-zinc-200 pt-4">
             <LogoutForm />
           </div>
+          </div>
         </aside>
 
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="min-w-0 px-4 py-6 sm:px-6 lg:px-8">{children}</div>
       </div>
     </div>
   );

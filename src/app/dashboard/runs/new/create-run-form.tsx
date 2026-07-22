@@ -19,11 +19,13 @@ export function CreateRunForm() {
         const title = String(formData.get("title") ?? "");
         const date = String(formData.get("date") ?? "");
         const teacherEmail = String(formData.get("teacherEmail") ?? "");
+        const lapDistanceRaw = String(formData.get("lapDistanceKm") ?? "");
+        const lapDistanceKm = lapDistanceRaw ? Number(lapDistanceRaw) : null;
         const status = String(formData.get("status") ?? "draft") as "draft" | "active" | "completed";
 
         startTransition(async () => {
           try {
-            const result = await createRunAction({ title, date, teacherEmail, status });
+            const result = await createRunAction({ title, date, teacherEmail, lapDistanceKm, status });
 
             if (!result.ok) {
               setError(result.error.message);
@@ -69,6 +71,20 @@ export function CreateRunForm() {
           className="mt-1 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
           placeholder="lehrkraft@schule.de"
         />
+      </div>
+
+      <div>
+        <label htmlFor="lapDistanceKm" className="text-sm font-medium text-zinc-700">Km pro Runde</label>
+        <input
+          id="lapDistanceKm"
+          name="lapDistanceKm"
+          type="number"
+          min="0.01"
+          step="0.01"
+          className="mt-1 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
+          placeholder="z. B. 0.40"
+        />
+        <p className="mt-1 text-xs text-zinc-500">Optional. Wenn gesetzt, werden Kilometer aus den gelaufenen Runden automatisch berechnet.</p>
       </div>
 
       <div>

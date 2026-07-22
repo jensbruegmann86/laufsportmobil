@@ -14,6 +14,7 @@ export type AccessibleRun = {
   id: string;
   title: string;
   date: string;
+  lap_distance_km: number | null;
   status: "draft" | "active" | "completed";
   school_id: string;
   created_by: string;
@@ -30,7 +31,7 @@ export async function getAccessibleRunsForProfile(input: {
   if (profile.role === "admin") {
     const { data, error } = await supabase
       .from("runs")
-      .select("id, title, date, status, school_id, created_by, teacher_id")
+      .select("id, title, date, lap_distance_km, status, school_id, created_by, teacher_id")
       .eq("school_id", profile.school_id)
       .order("date", { ascending: false });
 
@@ -39,7 +40,7 @@ export async function getAccessibleRunsForProfile(input: {
 
   const { data, error } = await supabase
     .from("runs")
-    .select("id, title, date, status, school_id, created_by, teacher_id")
+    .select("id, title, date, lap_distance_km, status, school_id, created_by, teacher_id")
     .eq("teacher_id", userId)
     .order("date", { ascending: false });
 

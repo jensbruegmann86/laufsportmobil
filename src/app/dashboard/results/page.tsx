@@ -73,10 +73,13 @@ export default async function ResultsPage({ searchParams }: { searchParams: Prom
           <p className="mt-1 text-sm text-zinc-600">
             Event: {selectedRun.title} ({new Intl.DateTimeFormat("de-DE").format(new Date(selectedRun.date))})
           </p>
+          {selectedRun.lap_distance_km ? (
+            <p className="mt-2 text-xs text-zinc-500">1 Runde = {new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(selectedRun.lap_distance_km)} km</p>
+          ) : null}
         </section>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <LapInputForm runId={selectedRun.id} students={studentItems} />
+          <LapInputForm runId={selectedRun.id} students={studentItems} lapDistanceKm={selectedRun.lap_distance_km} />
         </section>
       </div>
     </main>

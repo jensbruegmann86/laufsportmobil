@@ -12,6 +12,7 @@ type StudentRow = {
   first_name: string;
   last_name: string;
   class_name: string;
+  run_results: { laps_completed: number } | null;
   start_number: number | null;
   token: string;
   run_id: string;
@@ -59,7 +60,7 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
   if (runIds.length > 0) {
     const { data: students, error: studentsError } = await adminSupabase
       .from("students")
-      .select("id, first_name, last_name, class_name, start_number, token, run_id")
+      .select("id, first_name, last_name, class_name, start_number, token, run_id, run_results(laps_completed)")
       .in("run_id", runIds)
       .order("start_number", { ascending: true, nullsFirst: false })
       .order("class_name", { ascending: true })
@@ -178,12 +179,16 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
                     <th className="px-2 py-3">Nachname</th>
                     <th className="px-2 py-3">Vorname</th>
                     <th className="px-2 py-3">Gruppe / Klasse</th>
+                    <th className="px-2 py-3">Leistung</th>
                     <th className="px-2 py-3">Aktionen</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredStudents.map((student) => {
                     const publicLink = `${appUrl}/s/${student.token}`;
+                    const lapsCompleted = student.run_results?.laps_completed ?? null;
+                    const activeRun = visibleRuns.find((run) => run.id === student.run_id);
+                    const kilometers = lapsCompleted != null && activeRun?.lap_distance_km ? lapsCompleted * activeRun.lap_distance_km : null;
 
                     return (
                       <tr key={student.id} className="border-b border-zinc-100">
@@ -191,6 +196,15 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
                         <td className="px-2 py-3 text-zinc-900">{student.last_name}</td>
                         <td className="px-2 py-3 text-zinc-900">{student.first_name}</td>
                         <td className="px-2 py-3 text-zinc-700">{student.class_name}</td>
+                        <td className="px-2 py-3 text-zinc-700">
+                          {lapsCompleted == null ? (
+                            "-"
+                          ) : kilometers != null ? (
+                            `${lapsCompleted} Runden · ${new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(kilometers)} km`
+                          ) : (
+                            `${lapsCompleted} Runden`
+                          )}
+                        </td>
                         <td className="px-2 py-3">
                           <StudentRowActions
                             studentId={student.id}

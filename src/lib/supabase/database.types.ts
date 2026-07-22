@@ -129,6 +129,7 @@ export type Database = {
           created_by: string;
           date: string;
           id: string;
+          lap_distance_km: number | null;
           school_id: string;
           status: Database["public"]["Enums"]["run_status"];
           teacher_id: string | null;
@@ -140,6 +141,7 @@ export type Database = {
           created_by: string;
           date: string;
           id?: string;
+          lap_distance_km?: number | null;
           school_id: string;
           status?: Database["public"]["Enums"]["run_status"];
           teacher_id?: string | null;
@@ -151,6 +153,7 @@ export type Database = {
           created_by?: string;
           date?: string;
           id?: string;
+          lap_distance_km?: number | null;
           school_id?: string;
           status?: Database["public"]["Enums"]["run_status"];
           teacher_id?: string | null;
