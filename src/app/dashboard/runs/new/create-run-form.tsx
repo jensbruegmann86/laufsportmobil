@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { createRunAction } from "@/app/actions/runs";
@@ -7,10 +8,29 @@ import { createRunAction } from "@/app/actions/runs";
 export function CreateRunForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [createdRunId, setCreatedRunId] = useState<string | null>(null);
+
+  if (createdRunId) {
+    return (
+      <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-900">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Erfolgreich</p>
+        <h2 className="mt-2 text-lg font-semibold">Event angelegt</h2>
+        <p className="mt-2">Das Event wurde gespeichert. Im naechsten Schritt kannst du Teilnehmer erfassen.</p>
+        <div className="mt-4">
+          <Link
+            href={`/dashboard/students/new?runId=${createdRunId}`}
+            className="inline-flex rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-700"
+          >
+            Zu den Teilnehmern
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <form
-      className="space-y-4"
+      className="space-y-5"
       onSubmit={(event) => {
         event.preventDefault();
         setError(null);
@@ -32,81 +52,78 @@ export function CreateRunForm() {
               return;
             }
 
-            window.location.assign(`/dashboard/students/new?runId=${result.data.id}`);
+            setCreatedRunId(result.data.id);
           } catch {
             setError("Event konnte nicht erstellt werden. Bitte Seite neu laden und erneut versuchen.");
           }
         });
       }}
     >
-      <div>
-        <label htmlFor="title" className="text-sm font-medium text-zinc-700">Event-Titel</label>
+      <div className="grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">1. Event anlegen</p>
         <input
           id="title"
           name="title"
           required
-          className="mt-1 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
-          placeholder="Sponsorenlauf 2026"
+          className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 text-sm outline-none focus:border-zinc-500"
+          placeholder="Event-Titel"
         />
-      </div>
-
-      <div>
-        <label htmlFor="date" className="text-sm font-medium text-zinc-700">Datum</label>
         <input
           id="date"
           name="date"
           type="date"
           required
-          className="mt-1 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
+          className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 text-sm outline-none focus:border-zinc-500"
         />
-      </div>
-
-      <div>
-        <label htmlFor="teacherEmail" className="text-sm font-medium text-zinc-700">Lehrer-E-Mail</label>
         <input
           id="teacherEmail"
           name="teacherEmail"
           type="email"
           required
-          className="mt-1 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
-          placeholder="lehrkraft@schule.de"
+          className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 text-sm outline-none focus:border-zinc-500"
+          placeholder="Lehrer-E-Mail"
         />
       </div>
 
-      <div>
-        <label htmlFor="lapDistanceKm" className="text-sm font-medium text-zinc-700">Km pro Runde</label>
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">2. Streckendaten</p>
         <input
           id="lapDistanceKm"
           name="lapDistanceKm"
           type="number"
           min="0.01"
           step="0.01"
-          className="mt-1 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
-          placeholder="z. B. 0.40"
+          className="mt-3 w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm outline-none focus:border-zinc-500"
+          placeholder="Km pro Runde, z. B. 0,40"
         />
         <p className="mt-1 text-xs text-zinc-500">Optional. Wenn gesetzt, werden Kilometer aus den gelaufenen Runden automatisch berechnet.</p>
       </div>
 
-      <div>
-        <label htmlFor="status" className="text-sm font-medium text-zinc-700">Status</label>
-        <select
-          id="status"
-          name="status"
-          defaultValue="draft"
-          className="mt-1 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
-        >
-          <option value="draft">Draft</option>
-          <option value="active">Active</option>
-          <option value="completed">Completed</option>
-        </select>
+      <div className="space-y-3 rounded-2xl border border-zinc-200 bg-white p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">3. Status</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            { value: "draft", label: "Entwurf", hint: "Vorbereitung" },
+            { value: "active", label: "Aktiv", hint: "Laufend" },
+            { value: "completed", label: "Abgeschlossen", hint: "Nachbereitung" },
+          ].map((item) => (
+            <label key={item.value} className="cursor-pointer">
+              <input type="radio" name="status" value={item.value} defaultChecked={item.value === "draft"} className="peer sr-only" />
+              <span className="block rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm transition peer-checked:border-zinc-900 peer-checked:bg-zinc-900 peer-checked:text-white hover:border-zinc-400">
+                <span className="block font-semibold">{item.label}</span>
+                <span className="mt-1 block text-xs text-zinc-500 peer-checked:text-zinc-300">{item.hint}</span>
+              </span>
+            </label>
+          ))}
+        </div>
       </div>
 
-      {error ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
+      {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
 
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-60"
+        className="w-full rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-60"
       >
         {isPending ? "Erstelle Event ..." : "Event erstellen"}
       </button>

@@ -11,12 +11,13 @@ export default async function RegisterPage({
 
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-zinc-900">Registrierung</h1>
-        <p className="mt-1 text-sm text-zinc-600">Registriere dich mit deiner eingeladenen E-Mail-Adresse.</p>
+      <div className="mx-auto w-full max-w-md rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Laufsportmobil</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900">Registrierung</h1>
+        <p className="mt-2 text-sm text-zinc-600">Nutze deine eingeladene E-Mail-Adresse, damit der Eventzugang direkt zugeordnet werden kann.</p>
 
         {invited === "1" ? (
-          <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <p className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             Einladung erkannt. Nach der Registrierung wird dein Eventzugang automatisch freigeschaltet.
           </p>
         ) : null}
@@ -25,7 +26,7 @@ export default async function RegisterPage({
           <RegisterForm initialEmail={email ?? ""} />
         </div>
 
-        <p className="mt-4 text-sm text-zinc-600">
+        <p className="mt-5 text-sm text-zinc-600">
           Bereits registriert? <Link href="/auth/login" className="font-semibold text-zinc-900">Zum Login</Link>
         </p>
       </div>

@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
+import { useRouter } from "next/navigation";
 
 import { createSponsorPledgeAction } from "@/app/s/[token]/actions";
 import { useToast } from "@/components/ui/toast-provider";
@@ -18,6 +19,7 @@ type SponsorshipFormProps = {
 export function SponsorshipForm({ token }: SponsorshipFormProps) {
   const [isPending, startTransition] = useTransition();
   const [serverError, setServerError] = useState<string | null>(null);
+  const router = useRouter();
   const { pushToast } = useToast();
 
   const {
@@ -54,13 +56,7 @@ export function SponsorshipForm({ token }: SponsorshipFormProps) {
         return;
       }
 
-      pushToast({ tone: "success", title: "Danke", message: result.message });
-      reset({
-        sponsorName: "",
-        sponsorEmail: "",
-        pledgeType: values.pledgeType,
-        amountEuro: values.amountEuro,
-      });
+      router.replace(`/s/${token}?submitted=1`);
     });
   };
 

@@ -12,7 +12,7 @@ export function LoginForm() {
 
   return (
     <form
-      className="space-y-4"
+      className="space-y-5"
       onSubmit={(event) => {
         event.preventDefault();
         setError(null);
@@ -34,35 +34,33 @@ export function LoginForm() {
         });
       }}
     >
-      <div className="space-y-1">
-        <label htmlFor="email" className="text-sm font-medium text-zinc-800">E-Mail</label>
+      <div className="grid gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">Zugang</p>
         <input
           id="email"
           name="email"
           type="email"
           required
-          className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
+          className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 text-sm outline-none focus:border-zinc-500"
+          placeholder="E-Mail"
         />
-      </div>
-
-      <div className="space-y-1">
-        <label htmlFor="password" className="text-sm font-medium text-zinc-800">Passwort</label>
         <input
           id="password"
           name="password"
           type="password"
           minLength={8}
           required
-          className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
+          className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 text-sm outline-none focus:border-zinc-500"
+          placeholder="Passwort"
         />
       </div>
 
-      {error ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
+      {error ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
 
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-60"
+        className="w-full rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white hover:bg-zinc-700 disabled:opacity-60"
       >
         {isPending ? "Anmeldung ..." : "Einloggen"}
       </button>
