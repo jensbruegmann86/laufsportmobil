@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { saveLapResultsAction } from "@/app/dashboard/runs/[runId]/results/actions";
+import { useToast } from "@/components/ui/toast-provider";
 
 type StudentItem = {
   id: string;
@@ -25,8 +26,8 @@ function formatKilometers(value: number): string {
 
 export function LapInputForm({ runId, students, lapDistanceKm = null }: LapInputFormProps) {
   const [isPending, startTransition] = useTransition();
-  const [resultMessage, setResultMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { pushToast } = useToast();
   const [lapsByStudentId, setLapsByStudentId] = useState<Record<string, number>>(
     Object.fromEntries(students.map((student) => [student.id, student.lapsCompleted])),
   );
@@ -35,7 +36,6 @@ export function LapInputForm({ runId, students, lapDistanceKm = null }: LapInput
     <form
       className="space-y-4"
       action={(formData) => {
-        setResultMessage(null);
         setErrorMessage(null);
 
         const entries = students.map((student) => {
@@ -53,12 +53,15 @@ export function LapInputForm({ runId, students, lapDistanceKm = null }: LapInput
 
           if (!result.ok) {
             setErrorMessage(result.error.message);
+            pushToast({ tone: "error", title: "Ergebnisse nicht gespeichert", message: result.error.message });
             return;
           }
 
-          setResultMessage(
-            `Runden gespeichert. ${result.notifications.length} Sponsoren-Benachrichtigungen wurden vorbereitet.`,
-          );
+          pushToast({
+            tone: "success",
+            title: "Ergebnisse gespeichert",
+            message: `${result.notifications.length} Sponsoren-Benachrichtigungen wurden vorbereitet.`,
+          });
         });
       }}
     >
@@ -107,9 +110,6 @@ export function LapInputForm({ runId, students, lapDistanceKm = null }: LapInput
       ) : null}
 
       {errorMessage ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{errorMessage}</p> : null}
-      {resultMessage ? (
-        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{resultMessage}</p>
-      ) : null}
 
       <button
         type="submit"

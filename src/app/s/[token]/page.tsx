@@ -16,6 +16,7 @@ type StudentPublicData = {
   class_name: string;
   run_title: string;
   run_date: string;
+  start_number?: number | null;
 };
 
 const TokenSchema = z.uuid();
@@ -62,29 +63,26 @@ export default async function PublicSponsorshipPage({ params }: { params: Promis
   return (
     <main className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-emerald-50 px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-xl space-y-6">
-        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">
-            Sponsorenlauf
-          </p>
-          <h1 className="text-2xl font-bold text-zinc-900">Jetzt fuer {fullName} sponsoren</h1>
-          <div className="mt-4 space-y-1 text-sm text-zinc-700">
-            <p>
-              <span className="font-semibold">Schueler/in:</span> {fullName}
-            </p>
-            <p>
-              <span className="font-semibold">Klasse:</span> {student.class_name}
-            </p>
-            <p>
-              <span className="font-semibold">Lauf:</span> {student.run_title}
-            </p>
-            <p>
-              <span className="font-semibold">Datum:</span> {formatGermanDate(student.run_date)}
-            </p>
+        <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Sponsorenlauf</p>
+          <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Jetzt fuer {fullName} sponsoren</h1>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Teilnehmer</p>
+              <p className="mt-1 text-lg font-semibold text-zinc-900">{fullName}</p>
+              <p className="mt-1 text-sm text-zinc-600">Klasse {student.class_name}</p>
+            </div>
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Event</p>
+              <p className="mt-1 text-lg font-semibold text-zinc-900">{student.run_title}</p>
+              <p className="mt-1 text-sm text-zinc-600">{formatGermanDate(student.run_date)}</p>
+            </div>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900">Sponsoring eintragen</h2>
+        <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
+          <h2 className="mb-1 text-lg font-semibold text-zinc-900">Sponsoring eintragen</h2>
+          <p className="mb-4 text-sm text-zinc-500">Wenige Angaben, klare Auswahl, fertig.</p>
           <SponsorshipForm token={token} />
         </section>
       </div>

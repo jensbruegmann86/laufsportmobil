@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 
 import { createSponsorPledgeAction } from "@/app/s/[token]/actions";
+import { useToast } from "@/components/ui/toast-provider";
 import {
   SponsorPledgeFormSchema,
   type SponsorPledgeFormInput,
@@ -16,8 +17,8 @@ type SponsorshipFormProps = {
 
 export function SponsorshipForm({ token }: SponsorshipFormProps) {
   const [isPending, startTransition] = useTransition();
-  const [serverMessage, setServerMessage] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
+  const { pushToast } = useToast();
 
   const {
     control,
@@ -36,9 +37,9 @@ export function SponsorshipForm({ token }: SponsorshipFormProps) {
   });
 
   const pledgeType = useWatch({ control, name: "pledgeType" });
+  const amountPlaceholder = pledgeType === "per_lap" ? "z. B. 2,00 pro Runde" : "z. B. 25,00 einmalig";
 
   const onSubmit = (values: SponsorPledgeFormInput) => {
-    setServerMessage(null);
     setServerError(null);
 
     startTransition(async () => {
@@ -49,10 +50,11 @@ export function SponsorshipForm({ token }: SponsorshipFormProps) {
 
       if (!result.ok) {
         setServerError(result.error.message);
+        pushToast({ tone: "error", title: "Sponsoring nicht gespeichert", message: result.error.message });
         return;
       }
 
-      setServerMessage(result.message);
+      pushToast({ tone: "success", title: "Danke", message: result.message });
       reset({
         sponsorName: "",
         sponsorEmail: "",
@@ -63,91 +65,90 @@ export function SponsorshipForm({ token }: SponsorshipFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <div className="space-y-2">
-        <label htmlFor="sponsorName" className="text-sm font-medium text-zinc-800">
-          Sponsor Name
-        </label>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
         <input
           id="sponsorName"
           type="text"
           autoComplete="name"
-          className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-500"
-          placeholder="z. B. Mama Mueller"
+          className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 outline-none transition focus:border-zinc-500 focus:bg-white"
+          placeholder="Dein Name"
           {...register("sponsorName")}
         />
         {errors.sponsorName?.message ? (
           <p className="text-sm text-rose-600">{errors.sponsorName.message}</p>
         ) : null}
-      </div>
+        </div>
 
-      <div className="space-y-2">
-        <label htmlFor="sponsorEmail" className="text-sm font-medium text-zinc-800">
-          Sponsor E-Mail
-        </label>
+        <div className="space-y-2">
         <input
           id="sponsorEmail"
           type="email"
           autoComplete="email"
-          className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-500"
-          placeholder="name@beispiel.de"
+          className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 outline-none transition focus:border-zinc-500 focus:bg-white"
+          placeholder="E-Mail fuer die Bestaetigung"
           {...register("sponsorEmail")}
         />
         {errors.sponsorEmail?.message ? (
           <p className="text-sm text-rose-600">{errors.sponsorEmail.message}</p>
         ) : null}
+        </div>
       </div>
 
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-zinc-800">Sponsoring-Typ</p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-300 px-3 py-3 text-sm text-zinc-900">
+      <div className="space-y-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">1. Sponsoring waehlen</p>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <label className={`group block cursor-pointer rounded-2xl border p-4 transition ${pledgeType === "fixed_amount" ? "border-zinc-900 bg-zinc-900 text-white shadow-lg shadow-zinc-900/10" : "border-zinc-200 bg-white hover:border-zinc-400 hover:bg-zinc-50"}`}>
             <input
               type="radio"
               value="fixed_amount"
-              className="h-4 w-4 accent-zinc-900"
+              className="sr-only"
               {...register("pledgeType")}
             />
-            Festbetrag
+            <p className={`text-sm font-semibold ${pledgeType === "fixed_amount" ? "text-white" : "text-zinc-900"}`}>Festbetrag</p>
+            <p className={`mt-1 text-sm ${pledgeType === "fixed_amount" ? "text-zinc-300" : "text-zinc-600"}`}>Einmaliger Betrag, unabhaengig von den gelaufenen Runden.</p>
           </label>
-          <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-300 px-3 py-3 text-sm text-zinc-900">
+          <label className={`group block cursor-pointer rounded-2xl border p-4 transition ${pledgeType === "per_lap" ? "border-emerald-700 bg-emerald-700 text-white shadow-lg shadow-emerald-700/10" : "border-zinc-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/40"}`}>
             <input
               type="radio"
               value="per_lap"
-              className="h-4 w-4 accent-zinc-900"
+              className="sr-only"
               {...register("pledgeType")}
             />
-            Pro Runde
+            <p className={`text-sm font-semibold ${pledgeType === "per_lap" ? "text-white" : "text-zinc-900"}`}>Pro Runde</p>
+            <p className={`mt-1 text-sm ${pledgeType === "per_lap" ? "text-emerald-100" : "text-zinc-600"}`}>Der finale Betrag ergibt sich automatisch aus den gelaufenen Runden.</p>
           </label>
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="amountEuro" className="text-sm font-medium text-zinc-800">
-          {pledgeType === "per_lap" ? "Betrag pro Runde (EUR)" : "Festbetrag (EUR)"}
-        </label>
+      <div className="space-y-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">2. Betrag eingeben</p>
         <input
           id="amountEuro"
           type="number"
           min={0.01}
           step={0.01}
-          className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-500"
+          className="w-full rounded-2xl border border-zinc-200 bg-white px-4 py-3.5 text-sm text-zinc-900 outline-none transition focus:border-zinc-500"
+          placeholder={amountPlaceholder}
           {...register("amountEuro", { valueAsNumber: true })}
         />
+        <p className="text-xs text-zinc-500">
+          {pledgeType === "per_lap" ? "Der Endbetrag wird nach dem Lauf automatisch berechnet." : "Der Betrag wird direkt als feste Zusage gespeichert."}
+        </p>
         {errors.amountEuro?.message ? (
           <p className="text-sm text-rose-600">{errors.amountEuro.message}</p>
         ) : null}
       </div>
 
-      {serverError ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{serverError}</p> : null}
-      {serverMessage ? (
-        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{serverMessage}</p>
-      ) : null}
+      {serverError ? <p className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{serverError}</p> : null}
 
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-2xl bg-zinc-900 px-4 py-3.5 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isPending ? "Wird gespeichert ..." : "Sponsoring speichern"}
       </button>

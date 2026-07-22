@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { createTeacherAccessLinkAction } from "@/app/actions/runs";
+import { useToast } from "@/components/ui/toast-provider";
 
 type Props = {
   runId: string;
@@ -12,8 +13,8 @@ type Props = {
 export function TeacherAccessCard({ runId, runTitle }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [accessUrl, setAccessUrl] = useState<string | null>(null);
+  const { pushToast } = useToast();
 
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -26,18 +27,18 @@ export function TeacherAccessCard({ runId, runTitle }: Props) {
         type="button"
         onClick={() => {
           setError(null);
-          setMessage(null);
 
           startTransition(async () => {
             const result = await createTeacherAccessLinkAction({ runId });
 
             if (!result.ok) {
               setError(result.error.message);
+              pushToast({ tone: "error", title: "Link fehlgeschlagen", message: result.error.message });
               return;
             }
 
             setAccessUrl(result.data.accessUrl);
-            setMessage(`Lehrer-Link erstellt (gueltig ca. ${result.data.expiresInHours} Stunden).`);
+            pushToast({ tone: "success", title: "Link erstellt", message: `Lehrer-Link ist fuer ca. ${result.data.expiresInHours} Stunden gueltig.` });
           });
         }}
         disabled={isPending}
@@ -54,7 +55,6 @@ export function TeacherAccessCard({ runId, runTitle }: Props) {
       ) : null}
 
       {error ? <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
-      {message ? <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
     </section>
   );
 }

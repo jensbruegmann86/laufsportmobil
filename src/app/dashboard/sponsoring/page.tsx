@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { PaymentStatusBadge } from "@/components/dashboard/payment-status-badge";
 import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
 import { getAccessibleRunsForProfile } from "@/lib/runs/access";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -326,13 +327,42 @@ export default async function DashboardSponsoringPage({ searchParams }: { search
           {cashOpenRows.length === 0 ? (
             <p className="text-sm text-zinc-600">Aktuell keine offenen Barzahlungen.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="space-y-3 md:hidden">
+              {cashOpenRows.map((row) => (
+                <article key={row.pledgeId} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-zinc-900">{row.sponsorName}</p>
+                      <p className="text-sm text-zinc-600">{row.studentName}</p>
+                      <p className="text-xs text-zinc-500">{row.runTitle}</p>
+                    </div>
+                    <PaymentStatusBadge status={row.status} paymentMethod="cash" compact />
+                  </div>
+                  <div className="mt-4 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">Betrag</p>
+                      <p className="text-lg font-semibold text-zinc-900">{formatEuroFromCents(row.amountCents)}</p>
+                    </div>
+                    <form action={confirmCashPaymentReceivedAction}>
+                      <input type="hidden" name="pledgeId" value={row.pledgeId} />
+                      <button
+                        type="submit"
+                        className="rounded-xl bg-emerald-700 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-600"
+                      >
+                        Als erhalten markieren
+                      </button>
+                    </form>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-[0.1em] text-zinc-500">
-                    <th className="px-2 py-3">Sponsor</th>
-                    <th className="px-2 py-3">Schueler</th>
-                    <th className="px-2 py-3">Lauf</th>
+                    <th className="px-2 py-3">Sponsor / Teilnehmer</th>
                     <th className="px-2 py-3">Betrag</th>
                     <th className="px-2 py-3">Status</th>
                     <th className="px-2 py-3">Aktion</th>
@@ -341,17 +371,14 @@ export default async function DashboardSponsoringPage({ searchParams }: { search
                 <tbody>
                   {cashOpenRows.map((row) => (
                     <tr key={row.pledgeId} className="border-b border-zinc-100">
-                      <td className="px-2 py-3 text-zinc-900">{row.sponsorName}</td>
-                      <td className="px-2 py-3 text-zinc-800">{row.studentName}</td>
-                      <td className="px-2 py-3 text-zinc-800">{row.runTitle}</td>
+                      <td className="px-2 py-3">
+                        <p className="font-medium text-zinc-900">{row.sponsorName}</p>
+                        <p className="text-sm text-zinc-600">{row.studentName}</p>
+                        <p className="text-xs text-zinc-500">{row.runTitle}</p>
+                      </td>
                       <td className="px-2 py-3 font-medium text-zinc-900">{formatEuroFromCents(row.amountCents)}</td>
                       <td className="px-2 py-3 text-xs text-zinc-600">
-                        {row.status}
-                        {row.expiresAt ? (
-                          <span className="block text-[11px] text-zinc-500">
-                            Link bis {new Intl.DateTimeFormat("de-DE").format(new Date(row.expiresAt))}
-                          </span>
-                        ) : null}
+                        <PaymentStatusBadge status={row.status} paymentMethod="cash" />
                       </td>
                       <td className="px-2 py-3">
                         <form action={confirmCashPaymentReceivedAction}>
@@ -369,6 +396,7 @@ export default async function DashboardSponsoringPage({ searchParams }: { search
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </section>
 
@@ -386,15 +414,50 @@ export default async function DashboardSponsoringPage({ searchParams }: { search
           {aggregateRows.length === 0 ? (
             <p className="text-sm text-zinc-600">Noch keine Events mit Sponsoring-Daten vorhanden.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="space-y-3 md:hidden">
+              {aggregateRows.map((row) => (
+                <article key={row.run.id} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-zinc-900">{row.run.title}</p>
+                      <p className="text-xs text-zinc-500">{new Intl.DateTimeFormat("de-DE").format(new Date(row.run.date))} · {row.run.status}</p>
+                    </div>
+                    <PaymentStatusBadge
+                      status={row.paidCount > 0 && row.paidCount === row.pledgeCount ? "paid" : row.notifiedCount > 0 ? "notified" : "pending"}
+                      paymentMethod={row.paidCount > 0 ? "stripe" : null}
+                      compact
+                    />
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-zinc-500">Pledges / Sponsoren</p>
+                      <p className="font-semibold text-zinc-900">{row.pledgeCount} / {row.sponsorCount}</p>
+                    </div>
+                    <div>
+                      <p className="text-zinc-500">Erwartet / Bezahlt</p>
+                      <p className="font-semibold text-zinc-900">{formatEuroFromCents(row.expectedCents)} / {formatEuroFromCents(row.paidCents)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <Link
+                      href={`/dashboard/runs/${row.run.id}/results`}
+                      className="inline-flex rounded-xl border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
+                    >
+                      Runden eingeben
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-[0.1em] text-zinc-500">
                     <th className="px-2 py-3">Event</th>
-                    <th className="px-2 py-3">Pledges</th>
-                    <th className="px-2 py-3">Sponsoren</th>
-                    <th className="px-2 py-3">Erwartet</th>
-                    <th className="px-2 py-3">Bezahlt</th>
+                    <th className="px-2 py-3">Volumen</th>
+                    <th className="px-2 py-3">Betraege</th>
                     <th className="px-2 py-3">Status</th>
                     <th className="px-2 py-3">Aktion</th>
                   </tr>
@@ -408,12 +471,23 @@ export default async function DashboardSponsoringPage({ searchParams }: { search
                           {new Intl.DateTimeFormat("de-DE").format(new Date(row.run.date))} · {row.run.status}
                         </p>
                       </td>
-                      <td className="px-2 py-3 text-zinc-800">{row.pledgeCount}</td>
-                      <td className="px-2 py-3 text-zinc-800">{row.sponsorCount}</td>
-                      <td className="px-2 py-3 text-zinc-800">{formatEuroFromCents(row.expectedCents)}</td>
-                      <td className="px-2 py-3 text-emerald-700">{formatEuroFromCents(row.paidCents)}</td>
+                      <td className="px-2 py-3 text-zinc-800">
+                        <p>{row.pledgeCount} Pledges</p>
+                        <p className="text-xs text-zinc-500">{row.sponsorCount} Sponsoren</p>
+                      </td>
+                      <td className="px-2 py-3 text-zinc-800">
+                        <p>{formatEuroFromCents(row.expectedCents)}</p>
+                        <p className="text-xs text-emerald-700">Bezahlt: {formatEuroFromCents(row.paidCents)}</p>
+                      </td>
                       <td className="px-2 py-3 text-xs text-zinc-600">
-                        {row.pendingCount} pending · {row.notifiedCount} notified · {row.paidCount} paid
+                        <div className="flex flex-wrap gap-2">
+                          <PaymentStatusBadge status="pending" compact />
+                          <span className="text-zinc-600">{row.pendingCount}</span>
+                          <PaymentStatusBadge status="notified" compact />
+                          <span className="text-zinc-600">{row.notifiedCount}</span>
+                          <PaymentStatusBadge status="paid" paymentMethod="stripe" compact />
+                          <span className="text-zinc-600">{row.paidCount}</span>
+                        </div>
                       </td>
                       <td className="px-2 py-3">
                         <Link
@@ -428,6 +502,7 @@ export default async function DashboardSponsoringPage({ searchParams }: { search
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </section>
 

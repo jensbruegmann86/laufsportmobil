@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { updateRunSettingsAction } from "@/app/actions/runs";
+import { useToast } from "@/components/ui/toast-provider";
 
 type Props = {
   runId: string;
@@ -16,7 +17,7 @@ type Props = {
 export function RunSettingsForm({ runId, initialTitle, initialDate, initialTeacherEmail, initialLapDistanceKm = null, canEditTeacherEmail = true }: Props) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const { pushToast } = useToast();
 
   return (
     <form
@@ -24,7 +25,6 @@ export function RunSettingsForm({ runId, initialTitle, initialDate, initialTeach
       onSubmit={(event) => {
         event.preventDefault();
         setError(null);
-        setMessage(null);
 
         const formData = new FormData(event.currentTarget);
         const title = String(formData.get("title") ?? "");
@@ -38,10 +38,11 @@ export function RunSettingsForm({ runId, initialTitle, initialDate, initialTeach
 
           if (!result.ok) {
             setError(result.error.message);
+            pushToast({ tone: "error", title: "Speichern fehlgeschlagen", message: result.error.message });
             return;
           }
 
-          setMessage("Event-Einstellungen gespeichert. Lehrer-Einladung wurde aktualisiert.");
+          pushToast({ tone: "success", title: "Gespeichert", message: "Event-Einstellungen wurden aktualisiert." });
         });
       }}
     >
@@ -100,7 +101,6 @@ export function RunSettingsForm({ runId, initialTitle, initialDate, initialTeach
       </div>
 
       {error ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
-      {message ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
 
       <button
         type="submit"

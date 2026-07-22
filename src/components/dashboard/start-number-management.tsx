@@ -7,6 +7,7 @@ import {
   assignStudentStartNumberAction,
   autoAssignStudentStartNumbersAction,
 } from "@/app/actions/students";
+import { useToast } from "@/components/ui/toast-provider";
 
 type StudentItem = {
   id: string;
@@ -26,8 +27,8 @@ export function StartNumberManagement({ runId, runTitle, students }: Props) {
   const router = useRouter();
   const [isAutoPending, startAutoTransition] = useTransition();
   const [manualPendingId, setManualPendingId] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { pushToast } = useToast();
 
   const assignedCount = students.filter((student) => student.startNumber != null).length;
   const unassignedCount = students.length - assignedCount;
@@ -81,21 +82,24 @@ export function StartNumberManagement({ runId, runTitle, students }: Props) {
             disabled={isAutoPending || students.length === 0}
             onClick={() => {
               setError(null);
-              setMessage(null);
 
               startAutoTransition(async () => {
                 const result = await autoAssignStudentStartNumbersAction({ runId });
 
                 if (!result.ok) {
                   setError(result.error.message);
+                  pushToast({ tone: "error", title: "Automatik fehlgeschlagen", message: result.error.message });
                   return;
                 }
 
-                setMessage(
-                  result.data.updatedCount > 0
-                    ? `${result.data.updatedCount} Teilnehmer haben automatisch Startnummern erhalten.`
-                    : "Alle vorhandenen Teilnehmer haben bereits eine Startnummer.",
-                );
+                pushToast({
+                  tone: "success",
+                  title: "Startnummern aktualisiert",
+                  message:
+                    result.data.updatedCount > 0
+                      ? `${result.data.updatedCount} Teilnehmer haben automatisch Startnummern erhalten.`
+                      : "Alle vorhandenen Teilnehmer haben bereits eine Startnummer.",
+                });
                 router.refresh();
               });
             }}
@@ -132,7 +136,6 @@ export function StartNumberManagement({ runId, runTitle, students }: Props) {
                       onSubmit={(event) => {
                         event.preventDefault();
                         setError(null);
-                        setMessage(null);
 
                         const formData = new FormData(event.currentTarget);
                         const raw = Number(formData.get("startNumber") ?? 0);
@@ -147,10 +150,11 @@ export function StartNumberManagement({ runId, runTitle, students }: Props) {
 
                           if (!result.ok) {
                             setError(result.error.message);
+                            pushToast({ tone: "error", title: "Speichern fehlgeschlagen", message: result.error.message });
                             return;
                           }
 
-                          setMessage(`Startnummer fuer ${student.firstName} ${student.lastName} gespeichert.`);
+                          pushToast({ tone: "success", title: "Startnummer gespeichert", message: `Startnummer fuer ${student.firstName} ${student.lastName} wurde gespeichert.` });
                           router.refresh();
                         });
                       }}
@@ -186,7 +190,6 @@ export function StartNumberManagement({ runId, runTitle, students }: Props) {
       </section>
 
       {error ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
-      {message ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
     </div>
   );
 }

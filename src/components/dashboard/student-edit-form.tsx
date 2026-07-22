@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { updateStudentAction } from "@/app/actions/students";
+import { useToast } from "@/components/ui/toast-provider";
 
 type Props = {
   studentId: string;
@@ -23,6 +24,7 @@ export function StudentEditForm({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const { pushToast } = useToast();
 
   return (
     <form
@@ -46,9 +48,11 @@ export function StudentEditForm({
 
           if (!result.ok) {
             setError(result.error.message);
+            pushToast({ tone: "error", title: "Aenderung fehlgeschlagen", message: result.error.message });
             return;
           }
 
+          pushToast({ tone: "success", title: "Gespeichert", message: "Teilnehmer wurde aktualisiert." });
           router.push(backHref);
           router.refresh();
         });
@@ -89,7 +93,7 @@ export function StudentEditForm({
         </div>
       </div>
 
-      {error ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
+      {error ? <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
 
       <div className="flex flex-wrap gap-2">
         <button

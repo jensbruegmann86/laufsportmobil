@@ -171,14 +171,50 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
           </section>
         ) : (
           <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
-            <div className="overflow-x-auto">
+            <div className="space-y-3 md:hidden">
+              {filteredStudents.map((student) => {
+                const publicLink = `${appUrl}/s/${student.token}`;
+                const lapsCompleted = student.run_results?.laps_completed ?? null;
+                const activeRun = visibleRuns.find((run) => run.id === student.run_id);
+                const kilometers = lapsCompleted != null && activeRun?.lap_distance_km ? lapsCompleted * activeRun.lap_distance_km : null;
+
+                return (
+                  <article key={student.id} className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-zinc-900">
+                          {student.start_number != null ? `#${student.start_number} ` : ""}
+                          {student.first_name} {student.last_name}
+                        </p>
+                        <p className="text-sm text-zinc-600">Klasse {student.class_name}</p>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          {lapsCompleted == null
+                            ? "Noch keine Leistung erfasst"
+                            : kilometers != null
+                              ? `${lapsCompleted} Runden · ${new Intl.NumberFormat("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(kilometers)} km`
+                              : `${lapsCompleted} Runden`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-4">
+                      <StudentRowActions
+                        studentId={student.id}
+                        studentName={`${student.first_name} ${student.last_name}`}
+                        publicLink={publicLink}
+                        runFilterQuery={runFilterQuery}
+                      />
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-[0.1em] text-zinc-500">
                     <th className="px-2 py-3">Startnr.</th>
-                    <th className="px-2 py-3">Nachname</th>
-                    <th className="px-2 py-3">Vorname</th>
-                    <th className="px-2 py-3">Gruppe / Klasse</th>
+                    <th className="px-2 py-3">Teilnehmer</th>
                     <th className="px-2 py-3">Leistung</th>
                     <th className="px-2 py-3">Aktionen</th>
                   </tr>
@@ -193,9 +229,10 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
                     return (
                       <tr key={student.id} className="border-b border-zinc-100">
                         <td className="px-2 py-3 text-zinc-700">{student.start_number ?? "-"}</td>
-                        <td className="px-2 py-3 text-zinc-900">{student.last_name}</td>
-                        <td className="px-2 py-3 text-zinc-900">{student.first_name}</td>
-                        <td className="px-2 py-3 text-zinc-700">{student.class_name}</td>
+                        <td className="px-2 py-3">
+                          <p className="text-zinc-900">{student.first_name} {student.last_name}</p>
+                          <p className="text-xs text-zinc-500">Klasse {student.class_name}</p>
+                        </td>
                         <td className="px-2 py-3 text-zinc-700">
                           {lapsCompleted == null ? (
                             "-"

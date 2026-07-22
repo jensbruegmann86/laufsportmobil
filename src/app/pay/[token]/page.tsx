@@ -114,10 +114,7 @@ export default async function SponsorPaymentPage({
         ) : (
           <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
             <h2 className="text-lg font-semibold text-zinc-900">Zahlungsart waehlen</h2>
-            <p className="mt-2 text-sm text-zinc-600">
-              Du kannst entweder bar in der Schule zahlen oder direkt online per Stripe. Falls der Link
-              abgelaufen ist, wird der Abschluss im naechsten Schritt blockiert.
-            </p>
+            <p className="mt-2 text-sm text-zinc-600">Waehle die passende Zahlungsart fuer deinen Abschluss.</p>
 
             {paymentState === "cancelled" ? (
               <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -138,9 +135,10 @@ export default async function SponsorPaymentPage({
               }}>
                 <button
                   type="submit"
-                  className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-50"
+                  className="w-full rounded-2xl border border-zinc-200 bg-white p-4 text-left transition hover:border-amber-300 hover:bg-amber-50"
                 >
-                  Bar in der Schule
+                  <span className="block text-sm font-semibold text-zinc-900">Bar in der Schule</span>
+                  <span className="mt-1 block text-sm text-zinc-600">Wird spaeter von der Schule als eingegangen markiert.</span>
                 </button>
               </form>
 
@@ -148,9 +146,10 @@ export default async function SponsorPaymentPage({
                 <input type="hidden" name="token" value={token} />
                 <button
                   type="submit"
-                  className="w-full rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700"
+                  className="w-full rounded-2xl border border-zinc-900 bg-zinc-900 p-4 text-left transition hover:bg-zinc-800"
                 >
-                  Online via Stripe
+                  <span className="block text-sm font-semibold text-white">Online via Stripe</span>
+                  <span className="mt-1 block text-sm text-zinc-300">Direkt weiter zur sicheren Online-Zahlung.</span>
                 </button>
               </form>
             </div>

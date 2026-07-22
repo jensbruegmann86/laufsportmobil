@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { addStudentToRunAction, addStudentsToRunAction } from "@/app/actions/students";
 import { createTeacherAccessLinkAction } from "@/app/actions/runs";
+import { useToast } from "@/components/ui/toast-provider";
 
 type Props = {
   runId: string;
@@ -118,10 +119,10 @@ export function StudentsManagement({
   const [isPendingBulk, startBulk] = useTransition();
   const [isPendingLink, startLink] = useTransition();
   const [isPendingCsv, startCsv] = useTransition();
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accessUrl, setAccessUrl] = useState<string | null>(null);
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
+  const { pushToast } = useToast();
 
   const qrPdfUrl = initialAccessToken
     ? `/api/runs/${runId}/qr-pdf?access=${encodeURIComponent(initialAccessToken)}`
@@ -142,7 +143,6 @@ export function StudentsManagement({
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);
-            setMessage(null);
 
             const formData = new FormData(event.currentTarget);
             const expiresInHours = Number(formData.get("expiresInHours") ?? "24");
@@ -153,11 +153,12 @@ export function StudentsManagement({
 
                 if (!result.ok) {
                   setError(result.error.message);
+                  pushToast({ tone: "error", title: "Link fehlgeschlagen", message: result.error.message });
                   return;
                 }
 
                 setAccessUrl(result.data.accessUrl);
-                setMessage(`Lehrer-Link erstellt (gueltig fuer ${result.data.expiresInHours}h).`);
+                pushToast({ tone: "success", title: "Link erstellt", message: `Lehrer-Link ist fuer ${result.data.expiresInHours} Stunden gueltig.` });
               } catch {
                 setError("Lehrer-Link konnte nicht erstellt werden.");
               }
@@ -203,7 +204,6 @@ export function StudentsManagement({
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);
-            setMessage(null);
             const formElement = event.currentTarget;
 
             const formData = new FormData(formElement);
@@ -222,10 +222,11 @@ export function StudentsManagement({
 
                 if (!result.ok) {
                   setError(result.error.message);
+                  pushToast({ tone: "error", title: "Teilnehmer nicht gespeichert", message: result.error.message });
                   return;
                 }
 
-                setMessage(`Schueler gespeichert (${result.data.createdCount}).`);
+                pushToast({ tone: "success", title: "Teilnehmer gespeichert", message: `${result.data.createdCount} Teilnehmer wurde hinzugefuegt.` });
                 formElement.reset();
               } catch {
                 setError("Schueler konnte nicht gespeichert werden.");
@@ -297,7 +298,6 @@ export function StudentsManagement({
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);
-            setMessage(null);
 
             const formData = new FormData(event.currentTarget);
             const raw = String(formData.get("bulkInput") ?? "");
@@ -318,10 +318,11 @@ export function StudentsManagement({
 
                 if (!result.ok) {
                   setError(result.error.message);
+                  pushToast({ tone: "error", title: "Bulk-Import fehlgeschlagen", message: result.error.message });
                   return;
                 }
 
-                setMessage(`Bulk gespeichert (${result.data.createdCount} Schueler).`);
+                pushToast({ tone: "success", title: "Bulk gespeichert", message: `${result.data.createdCount} Teilnehmer wurden gespeichert.` });
               } catch {
                 setError("Bulk-Import konnte nicht gespeichert werden.");
               }
@@ -375,7 +376,6 @@ export function StudentsManagement({
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);
-            setMessage(null);
             setCsvErrors([]);
 
             const formData = new FormData(event.currentTarget);
@@ -395,11 +395,13 @@ export function StudentsManagement({
                 if (parsed.errors.length > 0) {
                   setCsvErrors(parsed.errors);
                   setError(`CSV enthaelt ${parsed.errors.length} Fehler.`);
+                  pushToast({ tone: "error", title: "CSV enthaelt Fehler", message: `${parsed.errors.length} Zeilen muessen korrigiert werden.` });
                   return;
                 }
 
                 if (parsed.students.length === 0) {
                   setError("CSV enthaelt keine gueltigen Schueler.");
+                  pushToast({ tone: "error", title: "CSV leer", message: "Es wurden keine gueltigen Teilnehmer erkannt." });
                   return;
                 }
 
@@ -411,10 +413,11 @@ export function StudentsManagement({
 
                 if (!result.ok) {
                   setError(result.error.message);
+                  pushToast({ tone: "error", title: "CSV-Import fehlgeschlagen", message: result.error.message });
                   return;
                 }
 
-                setMessage(`CSV importiert (${result.data.createdCount} Schueler).`);
+                pushToast({ tone: "success", title: "CSV importiert", message: `${result.data.createdCount} Teilnehmer wurden importiert.` });
               } catch {
                 setError("CSV konnte nicht verarbeitet werden.");
               }
@@ -469,7 +472,6 @@ export function StudentsManagement({
       </section>
 
       {error ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
-      {message ? <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</p> : null}
     </div>
   );
 }
