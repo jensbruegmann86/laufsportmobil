@@ -17,6 +17,17 @@ type RunOption = {
   date: string;
 };
 
+type StudentRow = {
+  id: string;
+  run_id: string;
+};
+
+type PledgeRow = {
+  student_id: string;
+  status: "pending" | "notified" | "paid";
+  payment_method_choice: "cash" | "stripe" | null;
+};
+
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const supabase = await createServerComponentSupabaseClient();
   const {
@@ -49,6 +60,25 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 
   runOptions = runs.map((run) => ({ id: run.id, title: run.title, date: run.date }));
 
+  let sponsoringOpenCashCount = 0;
+  const runIds = runOptions.map((run) => run.id);
+
+  if (runIds.length > 0) {
+    const { data: students } = await adminSupabase.from("students").select("id, run_id").in("run_id", runIds);
+    const studentIds = ((students ?? []) as StudentRow[]).map((student) => student.id);
+
+    if (studentIds.length > 0) {
+      const { data: pledges } = await adminSupabase
+        .from("pledges")
+        .select("student_id, status, payment_method_choice")
+        .in("student_id", studentIds);
+
+      sponsoringOpenCashCount = ((pledges ?? []) as PledgeRow[]).filter(
+        (pledge) => pledge.payment_method_choice === "cash" && pledge.status !== "paid",
+      ).length;
+    }
+  }
+
   return (
     <div className="min-h-screen bg-zinc-100">
       <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 backdrop-blur">
@@ -70,7 +100,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
 
             <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-zinc-200 bg-white p-3 shadow-lg">
               <p className="mb-2 text-xs text-zinc-500">{user.email} ({profile?.role ?? "ohne Rolle"})</p>
-              <DashboardNavigation runOptions={runOptions} role={profile.role} />
+              <DashboardNavigation runOptions={runOptions} role={profile.role} sponsoringOpenCashCount={sponsoringOpenCashCount} />
               <div className="mt-3 border-t border-zinc-200 pt-3">
                 <LogoutForm />
               </div>
@@ -84,7 +114,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           <div className="px-5 py-6">
           <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Laufsportmobil</p>
           <p className="mb-4 text-xs text-zinc-500">{user.email} ({profile?.role ?? "ohne Rolle"})</p>
-          <DashboardNavigation runOptions={runOptions} role={profile.role} />
+          <DashboardNavigation runOptions={runOptions} role={profile.role} sponsoringOpenCashCount={sponsoringOpenCashCount} />
           <div className="mt-4 border-t border-zinc-200 pt-4">
             <LogoutForm />
           </div>

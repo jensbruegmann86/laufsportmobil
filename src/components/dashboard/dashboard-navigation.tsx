@@ -12,6 +12,7 @@ type RunOption = {
 type DashboardNavigationProps = {
   runOptions: RunOption[];
   role: "admin" | "teacher" | null;
+  sponsoringOpenCashCount?: number;
 };
 
 function toLabel(run: RunOption): string {
@@ -23,6 +24,8 @@ type NavItem = {
   href: string;
   label: string;
   exact?: boolean;
+  query?: Record<string, string>;
+  badge?: number;
 };
 
 type NavSection = {
@@ -30,7 +33,7 @@ type NavSection = {
   items: NavItem[];
 };
 
-export function DashboardNavigation({ runOptions, role }: DashboardNavigationProps) {
+export function DashboardNavigation({ runOptions, role, sponsoringOpenCashCount = 0 }: DashboardNavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -41,17 +44,42 @@ export function DashboardNavigation({ runOptions, role }: DashboardNavigationPro
       ? selectedFromQuery
       : (runOptions[0]?.id ?? "");
 
-  const buildHref = (href: string) => {
+  const buildHref = (item: NavItem) => {
     if (!selectedRunId) {
-      return href;
+      const urlWithoutRun = new URL(item.href, "http://localhost");
+
+      Object.entries(item.query ?? {}).forEach(([key, value]) => {
+        urlWithoutRun.searchParams.set(key, value);
+      });
+
+      return `${urlWithoutRun.pathname}${urlWithoutRun.searchParams.toString() ? `?${urlWithoutRun.searchParams.toString()}` : ""}`;
     }
 
-    const url = new URL(href, "http://localhost");
+    const url = new URL(item.href, "http://localhost");
     url.searchParams.set("runId", selectedRunId);
+    Object.entries(item.query ?? {}).forEach(([key, value]) => {
+      url.searchParams.set(key, value);
+    });
     return `${url.pathname}?${url.searchParams.toString()}`;
   };
 
-  const isActive = (item: NavItem) => (item.exact ?? true ? pathname === item.href : pathname.startsWith(item.href));
+  const isActive = (item: NavItem) => {
+    if ((item.exact ?? true) && pathname !== item.href) {
+      return false;
+    }
+
+    if (!item.query) {
+      return true;
+    }
+
+    return Object.entries(item.query).every(([key, value]) => {
+      if (item.href === "/dashboard/sponsoring" && key === "view" && value === "overview") {
+        return (searchParams.get(key) ?? "overview") === value;
+      }
+
+      return searchParams.get(key) === value;
+    });
+  };
 
   const eventLinks: NavItem[] = [
     ...(role === "admin" ? [{ href: "/dashboard/runs/new", label: "Neues Event" }] : []),
@@ -79,11 +107,16 @@ export function DashboardNavigation({ runOptions, role }: DashboardNavigationPro
       items: participantLinks,
     },
     {
-      title: "Auswertung",
+      title: "Sponsoring",
       items: [
-        { href: "/dashboard/sponsoring", label: "Sponsoring" },
-        { href: "/dashboard/results", label: "Ergebnisse" },
+        { href: "/dashboard/sponsoring", label: "Uebersicht", query: { view: "overview" } },
+        { href: "/dashboard/sponsoring", label: "Barzahlungen", query: { view: "cash" }, badge: sponsoringOpenCashCount > 0 ? sponsoringOpenCashCount : undefined },
+        { href: "/dashboard/sponsoring", label: "Liste", query: { view: "list" } },
       ],
+    },
+    {
+      title: "Auswertung",
+      items: [{ href: "/dashboard/results", label: "Ergebnisse" }],
     },
   ];
 
@@ -130,15 +163,22 @@ export function DashboardNavigation({ runOptions, role }: DashboardNavigationPro
             <div className="space-y-1 border-l border-zinc-200 pl-3">
               {section.items.map((item) => (
                 <Link
-                  key={item.href}
-                  href={buildHref(item.href)}
+                    key={`${item.href}-${item.query ? Object.entries(item.query).map(([key, value]) => `${key}:${value}`).join("-") : "base"}`}
+                    href={buildHref(item)}
                   className={`block rounded-r-xl px-3 py-2 text-sm transition ${
                     isActive(item)
                       ? "border-l-2 border-zinc-900 bg-zinc-900 text-white"
                       : "border-l-2 border-transparent text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900"
                   }`}
                 >
-                  {item.label}
+                    <span className="flex items-center justify-between gap-3">
+                      <span>{item.label}</span>
+                      {item.badge ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </span>
                 </Link>
               ))}
             </div>
