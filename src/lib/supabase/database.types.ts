@@ -202,6 +202,7 @@ export type Database = {
           qr_code: string;
           run_id: string;
           slug: string;
+          start_number: number | null;
           token: string;
           updated_at: string;
         };
@@ -214,6 +215,7 @@ export type Database = {
           qr_code: string;
           run_id: string;
           slug: string;
+          start_number?: number | null;
           token?: string;
           updated_at?: string;
         };
@@ -226,6 +228,7 @@ export type Database = {
           qr_code?: string;
           run_id?: string;
           slug?: string;
+          start_number?: number | null;
           token?: string;
           updated_at?: string;
         };

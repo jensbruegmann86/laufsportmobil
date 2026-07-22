@@ -9,6 +9,7 @@ type StudentItem = {
   firstName: string;
   lastName: string;
   className: string;
+  startNumber: number | null;
   lapsCompleted: number;
 };
 
@@ -57,6 +58,7 @@ export function LapInputForm({ runId, students }: LapInputFormProps) {
         {students.map((student) => (
           <div key={student.id} className="rounded-xl border border-zinc-200 bg-white p-4">
             <p className="font-semibold text-zinc-900">
+              {student.startNumber != null ? `#${student.startNumber} ` : ""}
               {student.firstName} {student.lastName}
             </p>
             <p className="text-sm text-zinc-600">Klasse {student.className}</p>

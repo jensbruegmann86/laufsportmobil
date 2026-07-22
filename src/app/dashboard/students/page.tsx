@@ -12,6 +12,7 @@ type StudentRow = {
   first_name: string;
   last_name: string;
   class_name: string;
+  start_number: number | null;
   token: string;
   run_id: string;
 };
@@ -58,8 +59,9 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
   if (runIds.length > 0) {
     const { data: students, error: studentsError } = await adminSupabase
       .from("students")
-      .select("id, first_name, last_name, class_name, token, run_id")
+      .select("id, first_name, last_name, class_name, start_number, token, run_id")
       .in("run_id", runIds)
+      .order("start_number", { ascending: true, nullsFirst: false })
       .order("class_name", { ascending: true })
       .order("last_name", { ascending: true });
 
@@ -172,6 +174,7 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
               <table className="min-w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-[0.1em] text-zinc-500">
+                    <th className="px-2 py-3">Startnr.</th>
                     <th className="px-2 py-3">Nachname</th>
                     <th className="px-2 py-3">Vorname</th>
                     <th className="px-2 py-3">Gruppe / Klasse</th>
@@ -184,6 +187,7 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
 
                     return (
                       <tr key={student.id} className="border-b border-zinc-100">
+                        <td className="px-2 py-3 text-zinc-700">{student.start_number ?? "-"}</td>
                         <td className="px-2 py-3 text-zinc-900">{student.last_name}</td>
                         <td className="px-2 py-3 text-zinc-900">{student.first_name}</td>
                         <td className="px-2 py-3 text-zinc-700">{student.class_name}</td>

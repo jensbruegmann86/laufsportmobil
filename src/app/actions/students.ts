@@ -57,6 +57,15 @@ const DeleteStudentSchema = z.object({
   studentId: z.uuid(),
 });
 
+const AssignStudentStartNumberSchema = z.object({
+  studentId: z.uuid(),
+  startNumber: z.number().int().positive(),
+});
+
+const AutoAssignStartNumbersSchema = z.object({
+  runId: z.uuid(),
+});
+
 type StudentInput = z.infer<typeof StudentInputSchema>;
 
 type AddSingleStudentInput = z.input<typeof AddSingleStudentSchema>;
@@ -64,6 +73,8 @@ type AddSingleStudentInput = z.input<typeof AddSingleStudentSchema>;
 type AddStudentsBulkInput = z.input<typeof AddStudentsBulkSchema>;
 type UpdateStudentInput = z.input<typeof UpdateStudentSchema>;
 type DeleteStudentInput = z.input<typeof DeleteStudentSchema>;
+type AssignStudentStartNumberInput = z.input<typeof AssignStudentStartNumberSchema>;
+type AutoAssignStartNumbersInput = z.input<typeof AutoAssignStartNumbersSchema>;
 
 type StudentInsertPayload = TableInsert<"students">;
 
@@ -85,6 +96,11 @@ type StudentWriteResult = ActionResult<{
 type StudentMutateResult = ActionResult<{
   studentId: string;
   runId: string;
+}>;
+
+type StartNumberMutationResult = ActionResult<{
+  runId: string;
+  updatedCount: number;
 }>;
 
 type RunAccessContext =
@@ -380,6 +396,50 @@ async function resolveStudentAccess(studentId: string): Promise<ActionResult<{ r
   };
 }
 
+async function ensureStartNumberAvailable(input: {
+  runId: string;
+  startNumber: number;
+  ignoreStudentId?: string;
+}): Promise<ActionResult<null>> {
+  const adminSupabase = getSupabaseAdminClient();
+  const { runId, startNumber, ignoreStudentId } = input;
+
+  let query = adminSupabase
+    .from("students")
+    .select("id")
+    .eq("run_id", runId)
+    .eq("start_number", startNumber)
+    .limit(1);
+
+  if (ignoreStudentId) {
+    query = query.neq("id", ignoreStudentId);
+  }
+
+  const { data, error } = await query.maybeSingle();
+
+  if (error) {
+    return {
+      ok: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Startnummern konnten nicht geprueft werden.",
+      },
+    };
+  }
+
+  if (data) {
+    return {
+      ok: false,
+      error: {
+        code: "CONFLICT",
+        message: `Startnummer ${startNumber} ist in diesem Event bereits vergeben.`,
+      },
+    };
+  }
+
+  return { ok: true, data: null };
+}
+
 async function insertStudents(runId: string, students: StudentInput[]): Promise<StudentWriteResult> {
   const adminSupabase = getSupabaseAdminClient();
 
@@ -603,6 +663,166 @@ export async function deleteStudentAction(input: DeleteStudentInput): Promise<St
     data: {
       studentId: parsed.data.studentId,
       runId: access.data.runId,
+    },
+  };
+}
+
+export async function assignStudentStartNumberAction(
+  input: AssignStudentStartNumberInput,
+): Promise<StartNumberMutationResult> {
+  const parsed = AssignStudentStartNumberSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Ungueltige Startnummer.",
+        details: parsed.error.flatten().fieldErrors,
+      },
+    };
+  }
+
+  const access = await resolveStudentAccess(parsed.data.studentId);
+  if (!access.ok) {
+    return access;
+  }
+
+  const runId = access.data.runId;
+  const availability = await ensureStartNumberAvailable({
+    runId,
+    startNumber: parsed.data.startNumber,
+    ignoreStudentId: parsed.data.studentId,
+  });
+
+  if (!availability.ok) {
+    return availability;
+  }
+
+  const adminSupabase = getSupabaseAdminClient();
+  const { error } = await adminSupabase
+    .from("students")
+    .update({ start_number: parsed.data.startNumber })
+    .eq("id", parsed.data.studentId);
+
+  if (error) {
+    return {
+      ok: false,
+      error: {
+        code: error.code === "23505" ? "CONFLICT" : "INTERNAL_ERROR",
+        message:
+          error.code === "23505"
+            ? `Startnummer ${parsed.data.startNumber} ist in diesem Event bereits vergeben.`
+            : "Startnummer konnte nicht gespeichert werden.",
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      runId,
+      updatedCount: 1,
+    },
+  };
+}
+
+export async function autoAssignStudentStartNumbersAction(
+  input: AutoAssignStartNumbersInput,
+): Promise<StartNumberMutationResult> {
+  const parsed = AutoAssignStartNumbersSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Ungueltige Event-Auswahl fuer Startnummern.",
+        details: parsed.error.flatten().fieldErrors,
+      },
+    };
+  }
+
+  const access = await resolveRunAccessContext(parsed.data.runId);
+  if (!access.ok) {
+    return access;
+  }
+
+  const adminSupabase = getSupabaseAdminClient();
+  const { data: students, error: studentsError } = await adminSupabase
+    .from("students")
+    .select("id, class_name, last_name, first_name, start_number")
+    .eq("run_id", parsed.data.runId)
+    .order("class_name", { ascending: true })
+    .order("last_name", { ascending: true })
+    .order("first_name", { ascending: true });
+
+  if (studentsError) {
+    return {
+      ok: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "Teilnehmer konnten nicht geladen werden.",
+      },
+    };
+  }
+
+  const existingNumbers = new Set(
+    (students ?? []).map((student) => student.start_number).filter((value): value is number => value != null),
+  );
+  const unassigned = (students ?? []).filter((student) => student.start_number == null);
+
+  if (unassigned.length === 0) {
+    return {
+      ok: true,
+      data: {
+        runId: parsed.data.runId,
+        updatedCount: 0,
+      },
+    };
+  }
+
+  let nextNumber = existingNumbers.size > 0 ? Math.max(...existingNumbers) + 1 : 1;
+  const updates = unassigned.map((student) => {
+    while (existingNumbers.has(nextNumber)) {
+      nextNumber += 1;
+    }
+
+    const assignedNumber = nextNumber;
+    existingNumbers.add(assignedNumber);
+    nextNumber += 1;
+
+    return {
+      id: student.id,
+      start_number: assignedNumber,
+    };
+  });
+
+  for (const update of updates) {
+    const { error } = await adminSupabase
+      .from("students")
+      .update({ start_number: update.start_number })
+      .eq("id", update.id);
+
+    if (error) {
+      return {
+        ok: false,
+        error: {
+          code: error.code === "23505" ? "CONFLICT" : "INTERNAL_ERROR",
+          message:
+            error.code === "23505"
+              ? "Eine Startnummer wurde parallel bereits vergeben. Bitte erneut versuchen."
+              : "Startnummern konnten nicht automatisch gespeichert werden.",
+        },
+      };
+    }
+  }
+
+  return {
+    ok: true,
+    data: {
+      runId: parsed.data.runId,
+      updatedCount: updates.length,
     },
   };
 }

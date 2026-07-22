@@ -1,17 +1,16 @@
 import { redirect } from "next/navigation";
 
+import { StartNumberManagement } from "@/components/dashboard/start-number-management";
 import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
 import { getAccessibleRunsForProfile, hasRunAccess } from "@/lib/runs/access";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
 
-import { LapInputForm } from "@/app/dashboard/runs/[runId]/results/lap-input-form";
-
 type SearchParams = {
   runId?: string;
 };
 
-export default async function ResultsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+export default async function StudentStartNumbersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const { runId } = await searchParams;
   const supabase = await createServerComponentSupabaseClient();
   const adminSupabase = getSupabaseAdminClient();
@@ -29,7 +28,12 @@ export default async function ResultsPage({ searchParams }: { searchParams: Prom
     redirect("/onboarding");
   }
 
-  const { data: runs, error } = await getAccessibleRunsForProfile({ supabase: adminSupabase, profile, userId: user.id });
+  const { data: runs, error } = await getAccessibleRunsForProfile({
+    supabase: adminSupabase,
+    profile,
+    userId: user.id,
+  });
+
   if (error) {
     redirect("/dashboard");
   }
@@ -45,39 +49,28 @@ export default async function ResultsPage({ searchParams }: { searchParams: Prom
 
   const { data: students, error: studentsError } = await adminSupabase
     .from("students")
-    .select("id, first_name, last_name, class_name, start_number, run_results(laps_completed)")
+    .select("id, first_name, last_name, class_name, start_number")
     .eq("run_id", selectedRun.id)
-    .order("start_number", { ascending: true, nullsFirst: false })
     .order("class_name", { ascending: true })
-    .order("last_name", { ascending: true });
+    .order("last_name", { ascending: true })
+    .order("first_name", { ascending: true });
 
   if (studentsError) {
     redirect("/dashboard");
   }
 
-  const studentItems = (students ?? []).map((student) => ({
+  const items = (students ?? []).map((student) => ({
     id: student.id,
     firstName: student.first_name,
     lastName: student.last_name,
     className: student.class_name,
     startNumber: student.start_number,
-    lapsCompleted: student.run_results?.laps_completed ?? 0,
   }));
 
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto w-full max-w-3xl space-y-6">
-        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Ergebnisse</p>
-          <h1 className="mt-2 text-2xl font-bold text-zinc-900">Runden eintragen</h1>
-          <p className="mt-1 text-sm text-zinc-600">
-            Event: {selectedRun.title} ({new Intl.DateTimeFormat("de-DE").format(new Date(selectedRun.date))})
-          </p>
-        </section>
-
-        <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-          <LapInputForm runId={selectedRun.id} students={studentItems} />
-        </section>
+      <div className="mx-auto w-full max-w-6xl">
+        <StartNumberManagement runId={selectedRun.id} runTitle={selectedRun.title} students={items} />
       </div>
     </main>
   );

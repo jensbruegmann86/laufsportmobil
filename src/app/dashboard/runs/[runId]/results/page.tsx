@@ -61,8 +61,9 @@ export default async function RunResultsPage({ params }: { params: Promise<PageP
 
   const { data: students, error: studentsError } = await adminSupabase
     .from("students")
-    .select("id, first_name, last_name, class_name, run_results(laps_completed)")
+    .select("id, first_name, last_name, class_name, start_number, run_results(laps_completed)")
     .eq("run_id", runId)
+    .order("start_number", { ascending: true, nullsFirst: false })
     .order("class_name", { ascending: true })
     .order("last_name", { ascending: true });
 
@@ -76,6 +77,7 @@ export default async function RunResultsPage({ params }: { params: Promise<PageP
     firstName: student.first_name,
     lastName: student.last_name,
     className: student.class_name,
+    startNumber: student.start_number,
     lapsCompleted: student.run_results?.laps_completed ?? 0,
   }));
 
