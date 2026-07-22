@@ -60,7 +60,10 @@ export function LapInputForm({ runId, students, lapDistanceKm = null }: LapInput
           pushToast({
             tone: "success",
             title: "Ergebnisse gespeichert",
-            message: `${result.notifications.length} Sponsoren-Benachrichtigungen wurden vorbereitet.`,
+            message:
+              result.emailDelivery.failed > 0
+                ? `${result.notifications.length} Benachrichtigungen vorbereitet, ${result.emailDelivery.sent}/${result.emailDelivery.attempted} E-Mails versendet (${result.emailDelivery.failed} fehlgeschlagen).`
+                : `${result.notifications.length} Sponsoren-Benachrichtigungen wurden vorbereitet und ${result.emailDelivery.sent} E-Mails versendet.`,
           });
         });
       }}

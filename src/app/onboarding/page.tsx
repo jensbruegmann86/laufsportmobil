@@ -27,7 +27,7 @@ export default async function OnboardingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-4 py-10 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-zinc-100 p-[calc(var(--spacing)*1)]">
       <div className="mx-auto w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-zinc-900">Ersteinrichtung</h1>
         <p className="mt-1 text-sm text-zinc-600">

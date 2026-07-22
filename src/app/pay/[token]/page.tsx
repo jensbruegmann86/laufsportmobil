@@ -75,7 +75,7 @@ export default async function SponsorPaymentPage({
   const paymentState = resolvedSearchParams?.payment;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-amber-50 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-gradient-to-b from-emerald-50 via-white to-amber-50 p-[calc(var(--spacing)*1)]">
       <div className="mx-auto w-full max-w-xl space-y-6">
         <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Sponsoring Abschluss</p>
@@ -89,7 +89,9 @@ export default async function SponsorPaymentPage({
 
         {isPaid ? (
           <section className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-800 shadow-sm">
-            Diese Spende wurde bereits erfolgreich bezahlt. Vielen Dank!
+            {paymentState === "success"
+              ? "Deine Spende wurde erfolgreich bezahlt. Vielen Dank!"
+              : "Diese Spende wurde bereits erfolgreich bezahlt. Vielen Dank!"}
           </section>
         ) : isCashSelected ? (
           <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 shadow-sm">

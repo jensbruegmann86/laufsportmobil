@@ -67,6 +67,10 @@ type CreateTeacherAccessLinkResult = ActionResult<{
   expiresInHours: number;
 }>;
 
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 async function createOrRefreshTeacherInvite(input: {
   runId: string;
   schoolId: string;
@@ -306,7 +310,17 @@ export async function updateRunSettingsAction(input: {
     };
   }
 
-  if (profile.role === "admin") {
+  const { data: existingInvite } = await adminSupabase
+    .from("teacher_invites")
+    .select("email")
+    .eq("run_id", parsed.data.runId)
+    .maybeSingle();
+
+  const nextTeacherEmail = normalizeEmail(parsed.data.teacherEmail);
+  const previousTeacherEmail = existingInvite?.email ? normalizeEmail(existingInvite.email) : null;
+  const teacherEmailChanged = previousTeacherEmail == null || previousTeacherEmail !== nextTeacherEmail;
+
+  if (profile.role === "admin" && teacherEmailChanged) {
     try {
       await createOrRefreshTeacherInvite({
         runId: parsed.data.runId,

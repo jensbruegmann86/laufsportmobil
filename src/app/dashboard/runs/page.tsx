@@ -222,7 +222,7 @@ export default async function RunsPage({ searchParams }: { searchParams: Promise
   const draftRuns = visibleRuns.filter((run) => run.status === "draft").length;
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-zinc-100 p-[calc(var(--spacing)*1)]">
       <div className="mx-auto w-full max-w-5xl space-y-5">
         <header className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <div>

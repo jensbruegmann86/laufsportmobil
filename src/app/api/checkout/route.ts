@@ -51,11 +51,52 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Zahlungslink ist abgelaufen." }, { status: 410 });
     }
 
+    const { data: pledge, error: pledgeError } = await supabase
+      .from("pledges")
+      .select("id, student_id")
+      .eq("id", paymentLink.pledge_id)
+      .maybeSingle();
+
+    if (pledgeError || !pledge) {
+      return NextResponse.json({ error: "Sponsoring-Datensatz nicht gefunden." }, { status: 404 });
+    }
+
+    const { data: student, error: studentError } = await supabase
+      .from("students")
+      .select("id, run_id")
+      .eq("id", pledge.student_id)
+      .maybeSingle();
+
+    if (studentError || !student) {
+      return NextResponse.json({ error: "Teilnehmer nicht gefunden." }, { status: 404 });
+    }
+
+    const { data: run, error: runError } = await supabase
+      .from("runs")
+      .select("id, title, date")
+      .eq("id", student.run_id)
+      .maybeSingle();
+
+    if (runError || !run) {
+      return NextResponse.json({ error: "Event nicht gefunden." }, { status: 404 });
+    }
+
+    const runTitle = run.title.slice(0, 120);
+    const checkoutMetadata = {
+      pledge_id: paymentLink.pledge_id,
+      payment_link_token: paymentLink.token,
+      run_id: run.id,
+      run_title: runTitle,
+      run_date: run.date,
+      student_id: student.id,
+    };
+
     const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
 
     const stripe = getStripeServerClient();
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      client_reference_id: run.id,
       payment_method_types: ["card"],
       line_items: [
         {
@@ -64,7 +105,7 @@ export async function POST(request: Request) {
             currency: paymentLink.currency,
             unit_amount: paymentLink.amount_cents,
             product_data: {
-              name: "Sponsorenlauf Spende",
+              name: `Sponsorenlauf Spende · ${runTitle}`,
               description: `Pledge ${paymentLink.pledge_id}`,
             },
           },
@@ -72,9 +113,9 @@ export async function POST(request: Request) {
       ],
       success_url: `${appUrl}/pay/${paymentLink.token}?payment=success`,
       cancel_url: `${appUrl}/pay/${paymentLink.token}?payment=cancelled`,
-      metadata: {
-        pledge_id: paymentLink.pledge_id,
-        payment_link_token: paymentLink.token,
+      metadata: checkoutMetadata,
+      payment_intent_data: {
+        metadata: checkoutMetadata,
       },
     });
 

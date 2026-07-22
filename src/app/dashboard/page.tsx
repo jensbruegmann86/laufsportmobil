@@ -101,7 +101,7 @@ export default async function DashboardHomePage({ searchParams }: { searchParams
   ];
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-zinc-100 p-[calc(var(--spacing)*1)]">
       <div className="mx-auto w-full max-w-5xl space-y-6">
         <header className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Uebersicht</p>

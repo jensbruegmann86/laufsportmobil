@@ -319,7 +319,10 @@ export type Database = {
           id: string;
           paid_at: string | null;
           pledge_id: string;
+          stripe_card_brand: string | null;
+          stripe_card_last4: string | null;
           stripe_checkout_session_id: string | null;
+          stripe_payment_method_type: string | null;
           stripe_payment_intent_id: string | null;
           token: string;
           updated_at: string;
@@ -332,7 +335,10 @@ export type Database = {
           id?: string;
           paid_at?: string | null;
           pledge_id: string;
+          stripe_card_brand?: string | null;
+          stripe_card_last4?: string | null;
           stripe_checkout_session_id?: string | null;
+          stripe_payment_method_type?: string | null;
           stripe_payment_intent_id?: string | null;
           token?: string;
           updated_at?: string;
@@ -345,7 +351,10 @@ export type Database = {
           id?: string;
           paid_at?: string | null;
           pledge_id?: string;
+          stripe_card_brand?: string | null;
+          stripe_card_last4?: string | null;
           stripe_checkout_session_id?: string | null;
+          stripe_payment_method_type?: string | null;
           stripe_payment_intent_id?: string | null;
           token?: string;
           updated_at?: string;

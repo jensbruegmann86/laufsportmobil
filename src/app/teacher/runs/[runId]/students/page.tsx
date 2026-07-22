@@ -80,7 +80,7 @@ export default async function TeacherRunStudentsPage({
   }
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-zinc-100 p-[calc(var(--spacing)*1)]">
       <div className="mx-auto w-full max-w-4xl">
         <header className="mb-5 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Lehrerzugang</p>

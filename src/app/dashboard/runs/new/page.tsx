@@ -15,7 +15,7 @@ export default async function NewRunPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-zinc-100 p-[calc(var(--spacing)*1)]">
       <div className="mx-auto w-full max-w-xl rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-bold text-zinc-900">Neues Event anlegen</h1>
         <p className="mt-1 text-sm text-zinc-600">Lege einen neuen Sponsorenlauf an.</p>

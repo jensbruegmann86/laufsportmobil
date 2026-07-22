@@ -21,6 +21,11 @@ type SaveLapResultsResult =
         totalAmountEuro: number;
         paymentLink: string;
       }[];
+      emailDelivery: {
+        attempted: number;
+        sent: number;
+        failed: number;
+      };
     }
   | {
       ok: false;
@@ -125,23 +130,43 @@ export async function saveLapResultsAction(input: {
 
   try {
     const notifications = await processRunResultsAndGenerateNotifications({ runId: parsed.data.runId });
+    const mailTargets = notifications.filter((payload) => Boolean(payload.sponsorEmail));
 
-    for (const payload of notifications) {
-      if (!payload.sponsorEmail) {
-        continue;
+    const deliverySummary = {
+      attempted: mailTargets.length,
+      sent: 0,
+      failed: 0,
+    };
+
+    const batchSize = 20;
+
+    for (let offset = 0; offset < mailTargets.length; offset += batchSize) {
+      const batch = mailTargets.slice(offset, offset + batchSize);
+
+      const results = await Promise.allSettled(
+        batch.map((payload) =>
+          sendSponsorNotificationEmail({
+            sponsorName: payload.sponsorName,
+            sponsorEmail: payload.sponsorEmail as string,
+            studentName: payload.studentName,
+            lapsCompleted: payload.lapsCompleted,
+            totalAmountEuro: payload.totalAmountEuro,
+            paymentLink: payload.paymentLink,
+          }),
+        ),
+      );
+
+      for (const result of results) {
+        if (result.status === "fulfilled") {
+          deliverySummary.sent += 1;
+        } else {
+          deliverySummary.failed += 1;
+          console.error("Sponsor notification email failed", result.reason);
+        }
       }
-
-      await sendSponsorNotificationEmail({
-        sponsorName: payload.sponsorName,
-        sponsorEmail: payload.sponsorEmail,
-        studentName: payload.studentName,
-        lapsCompleted: payload.lapsCompleted,
-        totalAmountEuro: payload.totalAmountEuro,
-        paymentLink: payload.paymentLink,
-      });
     }
 
-    return { ok: true, notifications };
+    return { ok: true, notifications, emailDelivery: deliverySummary };
   } catch (error) {
     console.error("Post-run processing failed", error);
     return {

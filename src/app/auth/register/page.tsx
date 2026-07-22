@@ -10,7 +10,7 @@ export default async function RegisterPage({
   const { email, invited } = await searchParams;
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-4 py-10 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-zinc-100 p-[calc(var(--spacing)*1)]">
       <div className="mx-auto w-full max-w-md rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Laufsportmobil</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-zinc-900">Registrierung</h1>

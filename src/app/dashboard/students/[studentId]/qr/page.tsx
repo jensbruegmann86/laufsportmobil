@@ -77,7 +77,7 @@ export default async function StudentQrPage({ params }: { params: Promise<PagePa
   const shareUrl = `${appUrl}/s/${student.token}`;
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-zinc-100 p-[calc(var(--spacing)*1)]">
       <div className="mx-auto w-full max-w-xl">
         <StudentQrCard
           studentName={`${student.first_name} ${student.last_name}`}

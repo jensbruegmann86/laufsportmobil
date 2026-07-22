@@ -68,7 +68,7 @@ export default async function StudentStartNumbersPage({ searchParams }: { search
   }));
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-zinc-100 p-[calc(var(--spacing)*1)]">
       <div className="mx-auto w-full max-w-6xl">
         <StartNumberManagement runId={selectedRun.id} runTitle={selectedRun.title} students={items} />
       </div>

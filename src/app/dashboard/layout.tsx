@@ -112,12 +112,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
       <div className="grid w-full grid-cols-1 gap-0 lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="hidden self-start border-r border-zinc-200 bg-white md:block lg:sticky lg:top-[4.5rem]">
           <div className="px-5 py-6">
-          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">Laufsportmobil</p>
-          <p className="mb-4 text-xs text-zinc-500">{user.email} ({profile?.role ?? "ohne Rolle"})</p>
-          <DashboardNavigation runOptions={runOptions} role={profile.role} sponsoringOpenCashCount={sponsoringOpenCashCount} />
-          <div className="mt-4 border-t border-zinc-200 pt-4">
-            <LogoutForm />
-          </div>
+            <DashboardNavigation runOptions={runOptions} role={profile.role} sponsoringOpenCashCount={sponsoringOpenCashCount} />
           </div>
         </aside>
 

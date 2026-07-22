@@ -73,7 +73,7 @@ export default async function PublicSponsorshipPage({
   const submissionConfirmed = resolvedSearchParams?.submitted === "1";
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-emerald-50 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-gradient-to-b from-amber-50 via-white to-emerald-50 p-[calc(var(--spacing)*1)]">
       <div className="mx-auto w-full max-w-xl space-y-6">
         <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Sponsorenlauf</p>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getStripeServerClient } from "@/lib/stripe/server";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type CheckoutBody = {
   studentId: string;
@@ -30,9 +31,35 @@ export async function POST(request: Request) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
     const origin = appUrl || request.headers.get("origin") || "http://localhost:3000";
     const stripe = getStripeServerClient();
+    const supabase = getSupabaseAdminClient();
+
+    const { data: student } = await supabase
+      .from("students")
+      .select("id, run_id")
+      .eq("id", body.studentId)
+      .maybeSingle();
+
+    const { data: run } = student
+      ? await supabase
+          .from("runs")
+          .select("id, title, date")
+          .eq("id", student.run_id)
+          .maybeSingle()
+      : { data: null as { id: string; title: string; date: string } | null };
+
+    const runTitle = run?.title?.slice(0, 120) ?? "Unbekanntes Event";
+    const checkoutMetadata = {
+      student_id: body.studentId,
+      sponsor_name: body.sponsorName,
+      pledge_id: body.pledgeId ?? "",
+      run_id: run?.id ?? "",
+      run_title: runTitle,
+      run_date: run?.date ?? "",
+    };
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      client_reference_id: run?.id ?? body.studentId,
       payment_method_types: ["card"],
       line_items: [
         {
@@ -41,7 +68,7 @@ export async function POST(request: Request) {
             currency: "eur",
             product_data: {
               name: `Sponsorenlauf Spende: ${body.sponsorName}`,
-              description: `Schueler-ID ${body.studentId}`,
+              description: `${runTitle} · Schueler-ID ${body.studentId}`,
             },
             unit_amount: body.amountCents,
           },
@@ -49,10 +76,9 @@ export async function POST(request: Request) {
       ],
       success_url: `${origin}/?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/?payment=cancelled`,
-      metadata: {
-        student_id: body.studentId,
-        sponsor_name: body.sponsorName,
-        pledge_id: body.pledgeId ?? "",
+      metadata: checkoutMetadata,
+      payment_intent_data: {
+        metadata: checkoutMetadata,
       },
     });
 
