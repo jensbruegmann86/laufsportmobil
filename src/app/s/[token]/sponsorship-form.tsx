@@ -26,12 +26,12 @@ export function SponsorshipForm({ token }: SponsorshipFormProps) {
     control,
     register,
     handleSubmit,
-    reset,
     formState: { errors },
   } = useForm<SponsorPledgeFormInput>({
     resolver: zodResolver(SponsorPledgeFormSchema),
     defaultValues: {
-      sponsorName: "",
+      sponsorFirstName: "",
+      sponsorLastName: "",
       sponsorEmail: "",
       pledgeType: "fixed_amount",
       amountEuro: 10,
@@ -65,19 +65,33 @@ export function SponsorshipForm({ token }: SponsorshipFormProps) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
         <input
-          id="sponsorName"
+          id="sponsorFirstName"
           type="text"
-          autoComplete="name"
+          autoComplete="given-name"
           className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 outline-none transition focus:border-zinc-500 focus:bg-white"
-          placeholder="Dein Name"
-          {...register("sponsorName")}
+          placeholder="Vorname"
+          {...register("sponsorFirstName")}
         />
-        {errors.sponsorName?.message ? (
-          <p className="text-sm text-rose-600">{errors.sponsorName.message}</p>
+        {errors.sponsorFirstName?.message ? (
+          <p className="text-sm text-rose-600">{errors.sponsorFirstName.message}</p>
         ) : null}
         </div>
 
         <div className="space-y-2">
+        <input
+          id="sponsorLastName"
+          type="text"
+          autoComplete="family-name"
+          className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3.5 text-sm text-zinc-900 outline-none transition focus:border-zinc-500 focus:bg-white"
+          placeholder="Nachname"
+          {...register("sponsorLastName")}
+        />
+        {errors.sponsorLastName?.message ? (
+          <p className="text-sm text-rose-600">{errors.sponsorLastName.message}</p>
+        ) : null}
+        </div>
+
+        <div className="space-y-2 sm:col-span-2">
         <input
           id="sponsorEmail"
           type="email"

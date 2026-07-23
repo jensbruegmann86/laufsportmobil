@@ -40,7 +40,8 @@ export async function createSponsorPledgeAction(
     };
   }
 
-  const { token, sponsorName, sponsorEmail, pledgeType, amountEuro } = parsed.data;
+  const { token, sponsorFirstName, sponsorLastName, sponsorEmail, pledgeType, amountEuro } = parsed.data;
+  const sponsorName = `${sponsorFirstName.trim()} ${sponsorLastName.trim()}`.trim();
   const normalizedAmount = Number(amountEuro.toFixed(2));
   const supabase = await createServerActionSupabaseClient();
 

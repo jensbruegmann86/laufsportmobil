@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ensureProvisionedProfileForUser } from "@/lib/auth/provision-invited-teacher";
 import { DashboardNavigation } from "@/components/dashboard/dashboard-navigation";
 import { LogoutForm } from "@/components/dashboard/logout-form";
+import { MobileHeaderMenu } from "@/components/dashboard/mobile-header-menu";
 import { getAccessibleRunsForProfile } from "@/lib/runs/access";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createServerComponentSupabaseClient } from "@/lib/supabase/server";
@@ -82,30 +83,25 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   return (
     <div className="min-h-screen bg-zinc-100">
       <header className="sticky top-0 z-30 border-b border-zinc-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.14em] text-emerald-700">Laufsportmobil</p>
-            <p className="text-xs text-zinc-500">Dashboard Verwaltung</p>
-          </div>
-
-          <div className="hidden items-center gap-3 md:flex">
-            <p className="text-sm text-zinc-600">{user.email}</p>
-            <LogoutForm />
-          </div>
-
-          <details className="relative md:hidden">
-            <summary className="list-none rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700">
-              Menu
-            </summary>
-
-            <div className="absolute right-0 z-20 mt-2 w-64 rounded-xl border border-zinc-200 bg-white p-3 shadow-lg">
-              <p className="mb-2 text-xs text-zinc-500">{user.email} ({profile?.role ?? "ohne Rolle"})</p>
-              <DashboardNavigation runOptions={runOptions} role={profile.role} sponsoringOpenCashCount={sponsoringOpenCashCount} />
-              <div className="mt-3 border-t border-zinc-200 pt-3">
-                <LogoutForm />
-              </div>
+        <div className="mx-auto w-full max-w-[1400px] px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.14em] text-emerald-700">Laufsportmobil</p>
+              <p className="text-xs text-zinc-500">Dashboard Verwaltung</p>
             </div>
-          </details>
+
+            <div className="hidden items-center gap-3 md:flex">
+              <p className="text-sm text-zinc-600">{user.email}</p>
+              <LogoutForm />
+            </div>
+          </div>
+
+          <MobileHeaderMenu
+            runOptions={runOptions}
+            role={profile.role}
+            sponsoringOpenCashCount={sponsoringOpenCashCount}
+            userEmail={user.email ?? "-"}
+          />
         </div>
       </header>
 

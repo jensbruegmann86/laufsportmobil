@@ -15,6 +15,8 @@ export type Database = {
           created_at: string;
           fixed_amount: number | null;
           id: string;
+          notification_send_count: number;
+          notification_sent_at: string | null;
           payment_method_choice: Database["public"]["Enums"]["payment_method_choice"] | null;
           sponsor_email: string | null;
           sponsor_name: string;
@@ -28,6 +30,8 @@ export type Database = {
           created_at?: string;
           fixed_amount?: number | null;
           id?: string;
+          notification_send_count?: number;
+          notification_sent_at?: string | null;
           payment_method_choice?: Database["public"]["Enums"]["payment_method_choice"] | null;
           sponsor_email?: string | null;
           sponsor_name: string;
@@ -41,6 +45,8 @@ export type Database = {
           created_at?: string;
           fixed_amount?: number | null;
           id?: string;
+          notification_send_count?: number;
+          notification_sent_at?: string | null;
           payment_method_choice?: Database["public"]["Enums"]["payment_method_choice"] | null;
           sponsor_email?: string | null;
           sponsor_name?: string;

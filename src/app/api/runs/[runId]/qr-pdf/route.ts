@@ -122,12 +122,12 @@ export async function GET(
   const pageHeight = 841.89;
   const margin = 24;
   const gutter = 10;
-  const cardsPerPage = 5;
+  const cardsPerPage = 4;
   const cardWidth = pageWidth - margin * 2;
 
   const renderCards = async (sectionStudents: typeof students, sectionTitle?: string) => {
     let page = doc.addPage([pageWidth, pageHeight]);
-    let localCardsPerPage = cardsPerPage;
+    const localCardsPerPage = cardsPerPage;
     let sectionOffsetY = 0;
 
     if (sectionTitle) {
@@ -148,7 +148,6 @@ export async function GET(
       });
 
       sectionOffsetY = 44;
-      localCardsPerPage = 4;
     }
 
     const localCardHeight =
@@ -243,22 +242,73 @@ export async function GET(
         color: rgb(0.25, 0.25, 0.25),
       });
 
-      page.drawText("Sponsoring-Link:", {
+      page.drawText("Sponsorenliste (handschriftlich):", {
         x: textX,
         y: titleY - 52,
-        size: 10,
-        font,
-        color: rgb(0.4, 0.4, 0.4),
-      });
-
-      const shortUrl = sponsorUrl.length > 65 ? `${sponsorUrl.slice(0, 62)}...` : sponsorUrl;
-      page.drawText(shortUrl, {
-        x: textX,
-        y: titleY - 66,
         size: 9,
         font,
-        color: rgb(0.15, 0.15, 0.15),
+        color: rgb(0.35, 0.35, 0.35),
       });
+
+      const tableX = textX;
+      const tableY = y + 10;
+      const tableWidth = cardWidth - (tableX - x) - 12;
+      const tableHeight = Math.max(38, localCardHeight - 72);
+      const headerHeight = 12;
+      const rowHeight = (tableHeight - headerHeight) / 3;
+      const columns = [0.2, 0.2, 0.3, 0.3];
+      const headers = ["Vorname", "Nachname", "Festbetrag", "Betrag / Runde"];
+
+      page.drawRectangle({
+        x: tableX,
+        y: tableY,
+        width: tableWidth,
+        height: tableHeight,
+        borderWidth: 0.8,
+        borderColor: rgb(0.76, 0.76, 0.76),
+      });
+
+      page.drawRectangle({
+        x: tableX,
+        y: tableY + tableHeight - headerHeight,
+        width: tableWidth,
+        height: headerHeight,
+        borderWidth: 0,
+        color: rgb(0.95, 0.95, 0.95),
+      });
+
+      let cursorX = tableX;
+      headers.forEach((header, headerIndex) => {
+        const colWidth = tableWidth * columns[headerIndex];
+        if (headerIndex > 0) {
+          page.drawLine({
+            start: { x: cursorX, y: tableY },
+            end: { x: cursorX, y: tableY + tableHeight },
+            thickness: 0.5,
+            color: rgb(0.8, 0.8, 0.8),
+          });
+        }
+
+        page.drawText(header, {
+          x: cursorX + 4,
+          y: tableY + tableHeight - headerHeight + 3,
+          size: 7,
+          font,
+          color: rgb(0.35, 0.35, 0.35),
+        });
+
+        cursorX += colWidth;
+      });
+
+      for (let rowIndex = 1; rowIndex <= 3; rowIndex += 1) {
+        const lineY = tableY + tableHeight - headerHeight - rowHeight * rowIndex;
+        page.drawLine({
+          start: { x: tableX, y: lineY },
+          end: { x: tableX + tableWidth, y: lineY },
+          thickness: 0.4,
+          color: rgb(0.85, 0.85, 0.85),
+        });
+      }
 
       page.drawLine({
         start: { x: x + 6, y },

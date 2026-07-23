@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 export const SponsorPledgeFormSchema = z.object({
-  sponsorName: z.string().trim().min(2, "Bitte einen Namen mit mindestens 2 Zeichen eingeben."),
+  sponsorFirstName: z.string().trim().min(2, "Bitte einen Vornamen mit mindestens 2 Zeichen eingeben."),
+  sponsorLastName: z.string().trim().min(2, "Bitte einen Nachnamen mit mindestens 2 Zeichen eingeben."),
   sponsorEmail: z.email("Bitte eine gueltige E-Mail-Adresse eingeben.").trim(),
   pledgeType: z.enum(["fixed_amount", "per_lap"]),
   amountEuro: z

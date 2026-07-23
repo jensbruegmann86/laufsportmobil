@@ -571,7 +571,6 @@ export default async function DashboardSponsoringPage({ searchParams }: { search
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="border-b border-zinc-200 text-left text-xs uppercase tracking-[0.1em] text-zinc-500">
-                      <th className="px-2 py-3">Event</th>
                       <th className="px-2 py-3">Klasse</th>
                       <th className="px-2 py-3">Schueler</th>
                       <th className="px-2 py-3">Sponsor</th>
@@ -583,10 +582,6 @@ export default async function DashboardSponsoringPage({ searchParams }: { search
                   <tbody>
                     {filteredEntries.map((entry) => (
                       <tr key={entry.pledgeId} className="border-b border-zinc-100 align-top">
-                        <td className="px-2 py-3">
-                          <p className="font-medium text-zinc-900">{entry.runTitle}</p>
-                          <p className="text-xs text-zinc-500">{entry.runDate ? new Intl.DateTimeFormat("de-DE").format(new Date(entry.runDate)) : ""}</p>
-                        </td>
                         <td className="px-2 py-3 text-zinc-700">{entry.className}</td>
                         <td className="px-2 py-3 text-zinc-700">{entry.studentName}</td>
                         <td className="px-2 py-3">

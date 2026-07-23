@@ -65,7 +65,7 @@ export function RunSettingsForm({ runId, initialTitle, initialDate, initialTeach
           type="date"
           defaultValue={initialDate}
           required
-          className="mt-1 w-full rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none focus:border-zinc-500"
+          className="mt-1 block w-full min-w-0 rounded-xl border border-zinc-300 px-4 py-3 text-sm outline-none [appearance:none] focus:border-zinc-500"
         />
       </div>
 

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { calculateFinalPledgeCents, toEuro } from "@/lib/payments/calculations";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 const ProcessRunSchema = z.object({
   runId: z.uuid(),
@@ -14,7 +14,10 @@ type NotificationPayload = {
   studentName: string;
   lapsCompleted: number;
   totalAmountEuro: number;
+  totalAmountCents: number;
   paymentLink: string;
+  status: "pending" | "notified" | "paid";
+  notificationSentAt: string | null;
 };
 
 type StudentWithRunResultAndPledges = {
@@ -31,13 +34,12 @@ type StudentWithRunResultAndPledges = {
         amount_per_lap: number | null;
         fixed_amount: number | null;
         status: "pending" | "notified" | "paid";
+        notification_sent_at: string | null;
       }[]
     | null;
 };
 
-export async function processRunResultsAndGenerateNotifications(input: {
-  runId: string;
-}): Promise<NotificationPayload[]> {
+export async function prepareRunNotifications(input: { runId: string }): Promise<NotificationPayload[]> {
   const parsed = ProcessRunSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -49,7 +51,7 @@ export async function processRunResultsAndGenerateNotifications(input: {
   const { data, error } = await supabase
     .from("students")
     .select(
-      "id, first_name, last_name, run_results(laps_completed), pledges(id, sponsor_name, sponsor_email, type, amount_per_lap, fixed_amount, status)",
+      "id, first_name, last_name, run_results(laps_completed), pledges(id, sponsor_name, sponsor_email, type, amount_per_lap, fixed_amount, status, notification_sent_at)",
     )
     .eq("run_id", parsed.data.runId);
 
@@ -105,7 +107,7 @@ export async function processRunResultsAndGenerateNotifications(input: {
 
       const { error: pledgeUpdateError } = await supabase
         .from("pledges")
-        .update({ status: "notified", payment_method_choice: null })
+        .update({ status: "pending", payment_method_choice: null, notification_sent_at: null })
         .eq("id", pledge.id)
         .neq("status", "paid");
 
@@ -120,10 +122,15 @@ export async function processRunResultsAndGenerateNotifications(input: {
         studentName: `${student.first_name} ${student.last_name}`,
         lapsCompleted,
         totalAmountEuro: toEuro(totalCents),
+        totalAmountCents: totalCents,
         paymentLink: `${appUrl}/pay/${paymentLink.token}`,
+        status: "pending",
+        notificationSentAt: null,
       });
     }
   }
 
   return notifications;
 }
+
+export type { NotificationPayload };

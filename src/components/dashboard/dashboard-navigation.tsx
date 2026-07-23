@@ -13,6 +13,7 @@ type DashboardNavigationProps = {
   runOptions: RunOption[];
   role: "admin" | "teacher" | null;
   sponsoringOpenCashCount?: number;
+  onItemSelect?: () => void;
 };
 
 function toLabel(run: RunOption): string {
@@ -33,7 +34,7 @@ type NavSection = {
   items: NavItem[];
 };
 
-export function DashboardNavigation({ runOptions, role, sponsoringOpenCashCount = 0 }: DashboardNavigationProps) {
+export function DashboardNavigation({ runOptions, role, sponsoringOpenCashCount = 0, onItemSelect }: DashboardNavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -116,7 +117,10 @@ export function DashboardNavigation({ runOptions, role, sponsoringOpenCashCount 
     },
     {
       title: "Auswertung",
-      items: [{ href: "/dashboard/results", label: "Ergebnisse" }],
+      items: [
+        { href: "/dashboard/results", label: "Ergebnisse" },
+        { href: "/dashboard/mailing", label: "Mailing" },
+      ],
     },
   ];
 
@@ -128,10 +132,12 @@ export function DashboardNavigation({ runOptions, role, sponsoringOpenCashCount 
 
     if (runDetailMatch) {
       router.push(`/dashboard/runs/${nextRunId}${runDetailMatch[1]}?${nextParams.toString()}`);
+      onItemSelect?.();
       return;
     }
 
     router.push(`${pathname}?${nextParams.toString()}`);
+    onItemSelect?.();
   };
 
   return (
@@ -165,6 +171,7 @@ export function DashboardNavigation({ runOptions, role, sponsoringOpenCashCount 
                 <Link
                     key={`${item.href}-${item.query ? Object.entries(item.query).map(([key, value]) => `${key}:${value}`).join("-") : "base"}`}
                     href={buildHref(item)}
+                    onClick={() => onItemSelect?.()}
                   className={`block rounded-r-xl px-3 py-2 text-sm transition ${
                     isActive(item)
                       ? "border-l-2 border-zinc-900 bg-zinc-900 text-white"

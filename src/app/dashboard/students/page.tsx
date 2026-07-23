@@ -115,40 +115,38 @@ export default async function DashboardStudentsPage({ searchParams }: { searchPa
             </p>
           ) : null}
 
-          <div className="mt-4 space-y-2">
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">Klassenfilter</p>
-            <div className="flex flex-wrap gap-2">
+            <form method="get" className="mt-2 flex flex-wrap items-end gap-2">
+              {selectedRunId ? <input type="hidden" name="runId" value={selectedRunId} /> : null}
+              <label className="min-w-[220px] flex-1 text-sm text-zinc-700">
+                <span className="sr-only">Klasse auswaehlen</span>
+                <select
+                  name="className"
+                  defaultValue={selectedClass ?? "all"}
+                  className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-zinc-500"
+                >
+                  <option value="all">Alle Klassen</option>
+                  {availableClasses.map((item) => (
+                    <option key={item} value={item}>
+                      Klasse {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="submit"
+                className="rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-zinc-700"
+              >
+                Anwenden
+              </button>
               <Link
                 href={allClassesQuery ? `/dashboard/students?${allClassesQuery}` : "/dashboard/students"}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-                  selectedClass
-                    ? "border border-zinc-300 text-zinc-700 hover:bg-zinc-100"
-                    : "bg-zinc-900 text-white"
-                }`}
+                className="rounded-xl border border-zinc-300 px-4 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-100"
               >
-                Alle Klassen
+                Zuruecksetzen
               </Link>
-
-              {availableClasses.map((item) => {
-                const params = new URLSearchParams(baseQuery.toString());
-                params.set("className", item);
-                const isActive = selectedClass === item;
-
-                return (
-                  <Link
-                    key={item}
-                    href={`/dashboard/students?${params.toString()}`}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-                      isActive
-                        ? "bg-zinc-900 text-white"
-                        : "border border-zinc-300 text-zinc-700 hover:bg-zinc-100"
-                    }`}
-                  >
-                    Klasse {item}
-                  </Link>
-                );
-              })}
-            </div>
+            </form>
           </div>
 
           {classPdfUrl ? (
